@@ -1,12 +1,6 @@
 {
   "rewrites": [
-    {
-      "source": "/v",
-      "destination": "/api/license/validate"
-    },
-    {
-      "source": "/v/:key",
-      "destination": "/api/license/validate?key=:key"
-    }
+    { "source": "/v", "destination": "/api/license/validate" },
+    { "source": "/v/:key", "destination": "/api/license/validate?key=:key" }
   ]
 }
