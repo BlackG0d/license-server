@@ -1,13 +1,26 @@
-// /api/license/validate.js
 export default async function handler(req, res) {
   try {
-    const { key = "" } = req.query || {};
-    const raw = process.env.VALID_KEYS || "";
-    const VALID_KEYS = raw.split(",").map(s => s.trim()).filter(Boolean);
+    // входной ключ
+    const keyParam = String(req.query?.key || "")
+      .trim()
+      .toLowerCase();
 
-    const isValid = VALID_KEYS.includes(key);
-    return res.status(200).json({ valid: isValid });
+    // ключи из ENV
+    const raw = process.env.VALID_KEYS || "";
+    const VALID_KEYS = raw
+      .split(",")
+      .map(k => k.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isValid = VALID_KEYS.includes(keyParam);
+
+    return res.status(200).json({
+      valid: isValid,
+      key_received: keyParam,
+      valid_keys: VALID_KEYS.length
+    });
+
   } catch (e) {
-    return res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: e.message });
   }
 }
