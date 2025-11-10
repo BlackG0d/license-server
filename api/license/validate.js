@@ -1,6 +1,6 @@
 // api/license/validate.js
 import crypto from "crypto";
-import { verifyToken } from "../lib/token.js";
+import { makeKeyId, makeDevId, verifyCompact } from "../lib/token-compact.js";
 
 const VALID_KEYS = new Set([
   "3ASCW-WTQ9F-BP6VD-R5U6A",
@@ -19,20 +19,17 @@ export default async function handler(req, res) {
   let valid = false, reason = "no credentials";
 
   if (auth) {
-    // токен: проверяем подпись + срок + deviceId
-    const v = verifyToken(auth, secret);
+    const dev = makeDevId(String(deviceId || ""));
+    const v = verifyCompact(auth, dev, secret);
     if (!v.ok) {
       reason = v.reason;
-    } else if (String(v.payload.deviceId) !== String(deviceId)) {
-      reason = "device mismatch";
-    } else if (!VALID_KEYS.has(v.payload.key)) {
-      // на случай если ключ отозван: можно просто убрать из VALID_KEYS
-      reason = "license revoked";
     } else {
-      valid = true; reason = "ok";
+      // сверяем, что keyId токена принадлежит одному из текущих ключей
+      const match = [...VALID_KEYS].some(k => Buffer.compare(makeKeyId(k), v.keyId) === 0);
+      if (!match) reason = "license revoked";
+      else { valid = true; reason = "ok"; }
     }
   } else if (key) {
-    // fallback: прямой ключ
     const normalizedKey = String(key).trim().toUpperCase();
     valid = VALID_KEYS.has(normalizedKey);
     reason = valid ? "ok" : "invalid key";
