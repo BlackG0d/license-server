@@ -7,6 +7,14 @@
     {
       "source": "/v/:key",
       "destination": "/api/license/validate?key=:key"
+    },
+    {
+      "source": "/activate",
+      "destination": "/api/license/activate"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/health"
     }
   ]
 }
