@@ -1,26 +1,32 @@
+// Супер-надёжная нормализация: игнорируем регистр, дефисы и странные тире
+function normalize(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    // заменить все виды тире на обычный дефис
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")
+    // убрать ВСЁ, что не буква/цифра (включая дефисы)
+    .replace(/[^a-z0-9]/g, "");
+}
+
 export default async function handler(req, res) {
   try {
-    // входной ключ
-    const keyParam = String(req.query?.key || "")
-      .trim()
-      .toLowerCase();
+    const keyParam = normalize(req.query?.key);
 
-    // ключи из ENV
     const raw = process.env.VALID_KEYS || "";
     const VALID_KEYS = raw
       .split(",")
-      .map(k => k.trim().toLowerCase())
+      .map(k => normalize(k))
       .filter(Boolean);
 
-    const isValid = VALID_KEYS.includes(keyParam);
+    const isValid = keyParam.length > 0 && VALID_KEYS.includes(keyParam);
 
     return res.status(200).json({
       valid: isValid,
-      key_received: keyParam,
-      valid_keys: VALID_KEYS.length
+      input: keyParam,
+      keys_count: VALID_KEYS.length
     });
-
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: "Server error" });
   }
 }
