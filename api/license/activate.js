@@ -1,12 +1,11 @@
 // api/license/activate.js
-import { signToken } from "../lib/token.js";
+import { makeKeyId, makeDevId, signCompact } from "../lib/token-compact.js";
 
 const VALID_KEYS = new Set([
-  "3ASCW-WTQ9F-BP6VD-R5U6A", // добавляй свои ключи сюда или позже в БД
+  "3ASCW-WTQ9F-BP6VD-R5U6A",
 ]);
 
-const HOUR = 3600_000;
-const TOKEN_TTL = 30 * 24 * HOUR; // 30 дней
+const TOKEN_TTL_SEC = 30 * 24 * 3600; // 30 дней
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
@@ -17,9 +16,11 @@ export default async function handler(req, res) {
   const normalizedKey = String(key).trim().toUpperCase();
   if (!VALID_KEYS.has(normalizedKey)) return res.status(401).json({ error: "invalid key" });
 
-  const exp = Date.now() + TOKEN_TTL;
-  const payload = { key: normalizedKey, deviceId: String(deviceId), iat: Date.now(), exp };
-  const token = signToken(payload, process.env.SIGN_SECRET || "change_me_secret");
+  const secret = process.env.SIGN_SECRET || "change_me_secret";
+  const keyId = makeKeyId(normalizedKey);     // 4 байта
+  const devId = makeDevId(String(deviceId));  // 4 байта
+  const expSec = Math.floor(Date.now() / 1000) + TOKEN_TTL_SEC;
 
-  return res.status(200).json({ token, exp });
+  const token = signCompact(keyId, devId, expSec, secret);
+  return res.status(200).json({ token, exp: expSec * 1000 });
 }
