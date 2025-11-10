@@ -1,10 +1,11 @@
+// api/license/validate.js
 import crypto from "crypto";
-import { TOKENS } from "./activate"; // временно; в проде — БД
-
-const VALID_KEYS = new Set(["3ASCW-WTQ9F-BP6VD-R5U6A"]);
+import { VALID_KEYS, TOKENS } from "../store.js";
 
 function sign(payload, secret) {
-  return crypto.createHmac("sha256", secret).update(JSON.stringify(payload)).digest("hex");
+  return crypto.createHmac("sha256", secret)
+    .update(JSON.stringify(payload))
+    .digest("hex");
 }
 
 export default async function handler(req, res) {
@@ -16,18 +17,17 @@ export default async function handler(req, res) {
 
   if (auth) {
     const rec = TOKENS.get(auth);
-    if (rec) {
-      if (rec.exp < Date.now()) { reason = "token expired"; }
-      else if (String(deviceId) !== String(rec.deviceId)) { reason = "device mismatch"; }
-      else { valid = true; reason = "ok"; }
-    } else { reason = "token not found"; }
+    if (!rec) reason = "token not found";
+    else if (rec.exp < Date.now()) reason = "token expired";
+    else if (String(deviceId) !== String(rec.deviceId)) reason = "device mismatch";
+    else { valid = true; reason = "ok"; }
   } else if (key) {
-    const normalizedKey = key.trim().toUpperCase();
+    const normalizedKey = String(key).trim().toUpperCase();
     valid = VALID_KEYS.has(normalizedKey);
     reason = valid ? "ok" : "invalid key";
   }
 
   const body = { valid, reason, ts: Date.now() };
   const sig = sign(body, process.env.SIGN_SECRET || "default_secret");
-  return res.status(200).json({ ...body, sig });
+  res.status(200).json({ ...body, sig });
 }
