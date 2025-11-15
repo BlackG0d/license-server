@@ -1,10 +1,18 @@
 {
-  "name": "license-server",
+  "name": "mypasswordx-backend",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Backend for MyPassSwordX iOS app with license keys and one-device-per-user login",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "vercel dev"
+    "dev": "node src/server.js",
+    "start": "node src/server.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "sqlite3": "^5.1.7"
+  }
 }
