@@ -1,4 +1,2 @@
-const app = require("../src/app");
-
-// On Vercel, we export the express app directly as the handler
+const app = require("../src/server");
 module.exports = app;
