@@ -1,5 +1,115 @@
-// ========== TELEGRAM HELPER ==========
-// Put this somewhere near the top of your file, after your imports and utility functions.
+require("dotenv").config();
+
+const express = require("express");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+
+const { run, get } = require("./db");
+const { loadAndValidateLicenseForStart } = require("./license"); // adjust path if needed
+
+// ----------------- APP SETUP -----------------
+
+const app = express();
+app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+
+// ----------------- UTILITIES -----------------
+
+function generateRandomCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function addMinutes(date, minutes) {
+    return new Date(date.getTime() + minutes * 60000);
+}
+
+function isValidEmail(email) {
+    return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidDeviceId(deviceId) {
+    return typeof deviceId === "string" && deviceId.trim().length >= 6;
+}
+
+function isValidLicenseKey(licenseKey) {
+    return typeof licenseKey === "string" && licenseKey.trim().length >= 8;
+}
+
+// Simple auth middleware example (if you need JWT-protected routes)
+function authMiddleware(req, res, next) {
+    const auth = req.headers["authorization"];
+    if (!auth) {
+        return res.status(401).json({ error: "No authorization header" });
+    }
+
+    const parts = auth.split(" ");
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+        return res.status(401).json({ error: "Invalid authorization header format" });
+    }
+
+    const token = parts[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        console.error("JWT verify error:", err);
+        return res.status(401).json({ error: "Invalid or expired token" });
+    }
+}
+
+// ----------------- EMAIL SETUP -----------------
+
+const mailTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === "true", // true for 465, false for others
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
+
+// Optional: verify SMTP connection on startup
+mailTransporter.verify(function (error, success) {
+    if (error) {
+        console.error("SMTP connection error:", error);
+    } else {
+        console.log("SMTP server is ready to take our messages");
+    }
+});
+
+async function sendVerificationEmail(email, code) {
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+    if (!from) {
+        console.error("SMTP_FROM or SMTP_USER is not set");
+        return;
+    }
+
+    const mailOptions = {
+        from,
+        to: email,
+        subject: "Your verification code",
+        text: `Your verification code is ${code}. It will expire in 10 minutes.`,
+        html: `
+            <p>Hi!</p>
+            <p>Your verification code is:</p>
+            <p style="font-size: 24px; font-weight: bold;">${code}</p>
+            <p>This code will expire in 10 minutes.</p>
+        `
+    };
+
+    try {
+        const info = await mailTransporter.sendMail(mailOptions);
+        console.log("Verification email sent:", info.messageId);
+    } catch (err) {
+        console.error("Error sending verification email:", err);
+    }
+}
+
+// ----------------- TELEGRAM SETUP -----------------
 
 async function sendTelegramVerificationCode(email, code) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -7,6 +117,11 @@ async function sendTelegramVerificationCode(email, code) {
 
     if (!token || !chatId) {
         console.error("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set");
+        return;
+    }
+
+    if (typeof fetch !== "function") {
+        console.error("fetch is not available. Use Node 18+ or add a fetch polyfill.");
         return;
     }
 
@@ -29,15 +144,22 @@ async function sendTelegramVerificationCode(email, code) {
         if (!res.ok) {
             const body = await res.text();
             console.error("Telegram sendMessage failed:", res.status, body);
+        } else {
+            console.log("Telegram verification code sent for:", email);
         }
     } catch (err) {
         console.error("Error sending Telegram message:", err);
     }
 }
 
-// ========== ROUTE: /auth/continue-registration ==========
-// Replace your existing /auth/continue-registration handler with THIS one.
+// ----------------- ROUTES -----------------
 
+// Healthcheck
+app.get("/health", (req, res) => {
+    res.json({ status: "ok" });
+});
+
+// Continue registration: generate code, save it, send via email + Telegram
 app.post("/auth/continue-registration", async (req, res) => {
     try {
         const { licenseKey, deviceId, email } = req.body || {};
@@ -58,7 +180,7 @@ app.post("/auth/continue-registration", async (req, res) => {
         try {
             license = await loadAndValidateLicenseForStart(licenseKey, email, deviceId);
         } catch (e) {
-            console.error(e);
+            console.error("loadAndValidateLicenseForStart error:", e);
             return res.status(e.status || 400).json({ error: e.message || "License error" });
         }
 
@@ -117,15 +239,31 @@ app.post("/auth/continue-registration", async (req, res) => {
 
         console.log(`Verification code for ${email}: ${code}`);
 
-        // Send the code to Telegram (do not block the response on this)
-        sendTelegramVerificationCode(email, code)
-            .catch(err => console.error("sendTelegramVerificationCode error:", err));
+        // Send code via email (non-blocking)
+        sendVerificationEmail(email, code).catch(err =>
+            console.error("sendVerificationEmail error:", err)
+        );
+
+        // Send code via Telegram (non-blocking)
+        sendTelegramVerificationCode(email, code).catch(err =>
+            console.error("sendTelegramVerificationCode error:", err)
+        );
 
         return res.json({
-            message: "Verification code sent (Telegram + server logs)"
+            message: "Verification code sent (email + Telegram)"
         });
     } catch (err) {
         console.error("continue-registration error", err);
         return res.status(500).json({ error: "Internal server error" });
     }
 });
+
+// ----------------- START SERVER -----------------
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+module.exports = app; // optional, useful for tests or serverless adapters
