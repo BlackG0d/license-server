@@ -52,7 +52,8 @@ function authMiddleware(req, res, next) {
 
 // ---------- LICENSE HELPERS ----------
 
-async function loadAndValidateLicenseForStart(licenseKey, email, deviceId) {
+// New helper: validate license by key only (for start-registration)
+async function loadAndValidateLicenseKeyOnly(licenseKey) {
     const license = await get(
         "SELECT * FROM licenses WHERE license_key = $1",
         [licenseKey]
@@ -65,6 +66,13 @@ async function loadAndValidateLicenseForStart(licenseKey, email, deviceId) {
     if (license.status === "revoked" || license.status === "expired") {
         throw { status: 403, message: "License is not active" };
     }
+
+    return license;
+}
+
+// Existing helper now reuses the key-only check and adds email/device check
+async function loadAndValidateLicenseForStart(licenseKey, email, deviceId) {
+    const license = await loadAndValidateLicenseKeyOnly(licenseKey);
 
     // If already active, enforce same email+device
     if (license.status === "active" && license.used_at) {
@@ -120,9 +128,58 @@ app.get("/healthcheck", async (req, res) => {
 // ---------- AUTH FLOWS ----------
 
 /**
- * Step 1: Start registration (licenseKey + email + deviceId)
+ * Step 1: Start registration
+ * Now: ONLY verify licenseKey
+ * Body:
+ *  { "licenseKey": "TEST-LICENSE-KEY-123" }
  */
 app.post("/auth/start-registration", async (req, res) => {
+    try {
+        const { licenseKey } = req.body || {};
+
+        if (!isValidLicenseKey(licenseKey)) {
+            return res.status(400).json({ error: "Invalid license key format" });
+        }
+
+        let license;
+        try {
+            license = await loadAndValidateLicenseKeyOnly(licenseKey);
+        } catch (e) {
+            console.error(e);
+            return res.status(e.status || 400).json({ error: e.message || "License error" });
+        }
+
+        const nowIso = new Date().toISOString();
+        // Just touch updated_at so we see activity; do NOT bind email/device yet
+        await run(
+            "UPDATE licenses SET updated_at = $1 WHERE id = $2",
+            [nowIso, license.id]
+        );
+
+        return res.json({
+            message: "License key is valid. You can continue registration.",
+            licenseStatus: license.status
+        });
+    } catch (err) {
+        console.error("start-registration error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+/**
+ * Step 1.5: Continue registration
+ * Old /auth/start-registration logic moved here:
+ * Body:
+ * {
+ *   "licenseKey": "TEST-LICENSE-KEY-123",
+ *   "deviceId": "DEVICE-123456",
+ *   "email": "user@example.com"
+ * }
+ *
+ * Validates license + email + deviceId, binds license if unused,
+ * creates email_verifications entry and logs code.
+ */
+app.post("/auth/continue-registration", async (req, res) => {
     try {
         const { licenseKey, deviceId, email } = req.body || {};
 
@@ -138,6 +195,7 @@ app.post("/auth/start-registration", async (req, res) => {
 
         let license;
         try {
+            // This enforces the one-email/one-device-per-license rule.
             license = await loadAndValidateLicenseForStart(licenseKey, email, deviceId);
         } catch (e) {
             console.error(e);
@@ -194,7 +252,7 @@ app.post("/auth/start-registration", async (req, res) => {
             message: "Verification code sent to email (stubbed in server logs)"
         });
     } catch (err) {
-        console.error("start-registration error", err);
+        console.error("continue-registration error", err);
         return res.status(500).json({ error: "Internal server error" });
     }
 });
