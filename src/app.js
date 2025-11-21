@@ -5,6 +5,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { run, get } = require("./db");
+const { getVerificationEmailHtml } = require("./emailTemplates");
+
 
 const app = express();
 app.use(express.json());
@@ -90,15 +92,13 @@ async function sendEmailVerificationCode(email, code) {
 
     const subject =
         process.env.SMTP_SUBJECT_VERIFICATION || "Your verification code";
-    const text = `Your verification code is: ${code}\nIt will expire in 10 minutes.`;
-    const html = `<p>Your verification code is: <b>${code}</b></p><p>It will expire in 10 minutes.</p>`;
 
     await mailTransporter.sendMail({
         from,
         to: email,
         subject,
-        text,
-        html,
+        // text,
+        html: getVerificationEmailHtml(code),
     });
     console.log(`[SMTP] Verification code sent to ${email}`);
 }
