@@ -96,19 +96,22 @@ function getVerificationEmailHtml(code) {
         ">
           <tr>
             <td align="center" class="inner-padding" style="padding:32px 32px 12px;">
-              <div class="logo-wrapper" style="
-                width:88px;
-                height:88px;
-                border-radius:50%;
-                background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                box-shadow:0 12px 25px rgba(0,0,0,0.18);
-                margin-bottom:16px;
-              ">
-<img src="https://nahapetfx.com/images/logo.png" alt="NahapetFX Logo" style="width:57px; height:47;" />
-              </div>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" 
+       width="88" height="88" style="
+  border-radius:50%;
+  background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
+  box-shadow:0 12px 25px rgba(0,0,0,0.18);
+  margin-bottom:16px;
+">
+  <tr>
+    <td align="center" valign="middle">
+      <img src="https://nahapetfx.com/images/logo.png"
+           alt=""
+           width="44"
+           style="display:block; border:0; outline:none; height:auto;" />
+    </td>
+  </tr>
+</table>
 
               <h1 style="
                 margin:0;
