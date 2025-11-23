@@ -101,10 +101,10 @@ function getVerificationEmailHtml(code) {
   border-radius:50%;
   background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
   box-shadow:0 12px 25px rgba(0,0,0,0.18);
-  margin-bottom:10px;
+  margin-bottom:16px;
 ">
 <tr>
-    <td height="10"></td>
+    <td height="5"></td>
   </tr>
   <tr>
     <td align="center" valign="middle">
