@@ -107,7 +107,7 @@ function getVerificationEmailHtml(code) {
                 box-shadow:0 12px 25px rgba(0,0,0,0.18);
                 margin-bottom:16px;
               ">
-<img src="https://github.com/BlackG0d/nahapetfx.github.io/blob/main/images/white.png" alt="NahapetFX Logo" style="width:47px; height:auto;" />
+<img src="https://nahapetfx.com/images/logo.png" alt="NahapetFX Logo" style="width:47px; height:auto;" />
               </div>
 
               <h1 style="
