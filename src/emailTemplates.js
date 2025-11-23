@@ -102,8 +102,10 @@ function getVerificationEmailHtml(code) {
   background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
   box-shadow:0 12px 25px rgba(0,0,0,0.18);
   margin-bottom:16px;
-  padding-top:20px;
 ">
+<tr>
+    <td height="10"></td>
+  </tr>
   <tr>
     <td align="center" valign="middle">
       <img src="https://nahapetfx.com/images/logo.png"
