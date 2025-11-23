@@ -40,6 +40,12 @@ function getVerificationEmailHtml(code) {
       max-width: 100% !important;
       height: auto !important;
     }
+    /* Prevent logo from stretching vertically */
+    .logo-table img {
+      max-height: 78px !important;
+      height: auto !important;
+      object-fit: contain !important;
+    }
 
     /* Responsive styles */
     @media screen and (max-width: 600px) {
@@ -181,11 +187,11 @@ function getVerificationEmailHtml(code) {
     <td height="5"></td>
   </tr>
   <tr>
-    <td align="center" valign="middle">
+    <td align="center" valign="middle" style="height:78px; vertical-align:middle;">
       <img src="https://nahapetfx.com/images/logo.png"
            alt=""
-           width="89"
-           style="display:block; border:0; outline:none; height:auto;" />
+           width="73"
+           style="display:block; border:0; outline:none; height:auto; max-height:78px; max-width:73px; width:73px;" />
     </td>
   </tr>
 </table>
