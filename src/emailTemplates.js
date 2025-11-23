@@ -59,8 +59,8 @@ function getVerificationEmailHtml(code) {
         height: 72px !important;
       }
       .logo-table img {
-        width: 38px !important;
-        max-width: 38px !important;
+        width: 60px !important;
+        max-width: 60px !important;
       }
       .code-box-wrapper {
         padding-left: 20px !important;
@@ -109,8 +109,8 @@ function getVerificationEmailHtml(code) {
         height: 64px !important;
       }
       .logo-table img {
-        width: 34px !important;
-        max-width: 34px !important;
+        width: 53px !important;
+        max-width: 53px !important;
       }
       h1 {
         font-size: 22px !important;
@@ -175,7 +175,7 @@ function getVerificationEmailHtml(code) {
   border-radius:50%;
   background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
   box-shadow:0 12px 25px rgba(0,0,0,0.18);
-  margin:0 auto 16px;
+  margin-bottom:16px;
 ">
 <tr>
     <td height="5"></td>
@@ -183,9 +183,9 @@ function getVerificationEmailHtml(code) {
   <tr>
     <td align="center" valign="middle">
       <img src="https://nahapetfx.com/images/logo.png"
-           alt="NahapetFX Logo"
-           width="47"
-           style="display:block; border:0; outline:none; height:auto; max-width:47px; width:47px;" />
+           alt=""
+           width="73"
+           style="display:block; border:0; outline:none; height:auto;" />
     </td>
   </tr>
 </table>
