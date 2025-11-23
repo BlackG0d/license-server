@@ -23,10 +23,22 @@ function getVerificationEmailHtml(code) {
     table {
       border-collapse: collapse;
       border-spacing: 0;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
     }
     td {
       padding: 0;
       vertical-align: top;
+    }
+    /* Prevent tables from stretching on mobile */
+    table[role="presentation"] {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    /* Ensure images don't exceed container width */
+    img {
+      max-width: 100% !important;
+      height: auto !important;
     }
 
     /* Responsive styles */
@@ -37,36 +49,77 @@ function getVerificationEmailHtml(code) {
         border-radius: 0 !important;
       }
       .inner-padding {
-        padding-left: 16px !important;
-        padding-right: 16px !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        padding-top: 24px !important;
+        padding-bottom: 12px !important;
       }
-      .logo-wrapper {
+      .logo-table {
         width: 72px !important;
         height: 72px !important;
       }
+      .logo-table img {
+        width: 38px !important;
+        max-width: 38px !important;
+      }
       .code-box {
         width: 100% !important;
+        max-width: 100% !important;
+        padding: 14px 20px !important;
+        box-sizing: border-box !important;
       }
       .code-text {
+        font-size: 22px !important;
+        letter-spacing: 0.2em !important;
+        word-break: break-all !important;
+        overflow-wrap: break-word !important;
+      }
+      h1 {
         font-size: 24px !important;
-        letter-spacing: 0.22em !important;
+      }
+      .subtitle {
+        font-size: 12px !important;
+        letter-spacing: 0.14em !important;
+      }
+      .body-text {
+        font-size: 14px !important;
+        padding: 0 !important;
+      }
+      .meta-text {
+        font-size: 12px !important;
       }
     }
 
     @media screen and (max-width: 400px) {
       .inner-padding {
-        padding-left: 12px !important;
-        padding-right: 12px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        padding-top: 20px !important;
+      }
+      .logo-table {
+        width: 64px !important;
+        height: 64px !important;
+      }
+      .logo-table img {
+        width: 34px !important;
+        max-width: 34px !important;
       }
       h1 {
         font-size: 22px !important;
       }
       .subtitle {
-        font-size: 12px !important;
-        letter-spacing: 0.16em !important;
+        font-size: 11px !important;
+        letter-spacing: 0.12em !important;
       }
       .body-text {
-        font-size: 14px !important;
+        font-size: 13px !important;
+      }
+      .code-text {
+        font-size: 20px !important;
+        letter-spacing: 0.18em !important;
+      }
+      .code-box {
+        padding: 12px 16px !important;
       }
       .meta-text {
         font-size: 11px !important;
@@ -82,11 +135,12 @@ function getVerificationEmailHtml(code) {
   font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   color:#141414;
 ">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%; max-width:100%;">
     <tr>
-      <td align="center" style="padding:32px 16px;">
+      <td align="center" style="padding:20px 8px;">
         <!-- Card -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" class="container" style="
+          width:100%;
           max-width:480px;
           background:rgba(255,255,255,0.80);
           border-radius:24px;
@@ -97,11 +151,13 @@ function getVerificationEmailHtml(code) {
           <tr>
             <td align="center" class="inner-padding" style="padding:32px 32px 12px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" 
-       width="88" height="88" style="
+       width="88" height="88" class="logo-table" style="
+  width:88px;
+  height:88px;
   border-radius:50%;
   background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
   box-shadow:0 12px 25px rgba(0,0,0,0.18);
-  margin-bottom:16px;
+  margin:0 auto 16px;
 ">
 <tr>
     <td height="5"></td>
@@ -109,9 +165,9 @@ function getVerificationEmailHtml(code) {
   <tr>
     <td align="center" valign="middle">
       <img src="https://nahapetfx.com/images/logo.png"
-           alt=""
-           width="73"
-           style="display:block; border:0; outline:none; height:auto;" />
+           alt="NahapetFX Logo"
+           width="47"
+           style="display:block; border:0; outline:none; height:auto; max-width:47px; width:47px;" />
     </td>
   </tr>
 </table>
@@ -151,12 +207,15 @@ function getVerificationEmailHtml(code) {
           <tr>
             <td align="center" class="inner-padding" style="padding:0 32px 24px;">
               <div class="code-box" style="
-                display:inline-block;
+                display:block;
+                width:100%;
+                max-width:100%;
                 padding:16px 32px;
                 border-radius:18px;
                 background:rgba(255,255,255,0.95);
                 border:1px solid rgba(255,255,255,0.9);
                 box-shadow:0 10px 30px rgba(0,0,0,0.08);
+                box-sizing:border-box;
               ">
                 <span style="
                   font-size:13px;
@@ -174,7 +233,10 @@ function getVerificationEmailHtml(code) {
                   letter-spacing:0.28em;
                   color:#ff6a1a;
                   padding-left:0.28em;
-                  display:inline-block;
+                  display:block;
+                  text-align:center;
+                  word-break:break-all;
+                  overflow-wrap:break-word;
                 ">
                   ${code}
                 </span>
