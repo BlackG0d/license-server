@@ -184,7 +184,7 @@ function getVerificationEmailHtml(code) {
     <td align="center" valign="middle">
       <img src="https://nahapetfx.com/images/logo.png"
            alt=""
-           width="93"
+           width="89"
            style="display:block; border:0; outline:none; height:auto;" />
     </td>
   </tr>
