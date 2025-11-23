@@ -40,11 +40,11 @@ function getVerificationEmailHtml(code) {
       max-width: 100% !important;
       height: auto !important;
     }
-    /* Prevent logo from stretching vertically */
+    /* Prevent logo stretching on desktop */
     .logo-table img {
-      max-height: 78px !important;
+      max-width: 75px !important;
+      width: 75px !important;
       height: auto !important;
-      object-fit: contain !important;
     }
 
     /* Responsive styles */
@@ -63,13 +63,10 @@ function getVerificationEmailHtml(code) {
       .logo-table {
         width: 72px !important;
         height: 72px !important;
-        margin: 0 auto !important;
       }
       .logo-table img {
         width: 60px !important;
         max-width: 60px !important;
-        max-height: 62px !important;
-        height: auto !important;
       }
       .code-box-wrapper {
         padding-left: 20px !important;
@@ -116,13 +113,10 @@ function getVerificationEmailHtml(code) {
       .logo-table {
         width: 64px !important;
         height: 64px !important;
-        margin: 0 auto !important;
       }
       .logo-table img {
         width: 53px !important;
         max-width: 53px !important;
-        max-height: 55px !important;
-        height: auto !important;
       }
       h1 {
         font-size: 22px !important;
@@ -180,32 +174,27 @@ function getVerificationEmailHtml(code) {
         ">
           <tr>
             <td align="center" class="inner-padding" style="padding:32px 32px 12px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:16px;">
-                <tr>
-                  <td align="center">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" 
-           width="88" height="88" class="logo-table" style="
-      width:88px;
-      height:88px;
-      border-radius:50%;
-      background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
-      box-shadow:0 12px 25px rgba(0,0,0,0.18);
-    ">
-    <tr>
-        <td height="5"></td>
-      </tr>
-      <tr>
-        <td align="center" valign="middle" style="height:78px; vertical-align:middle;">
-          <img src="https://nahapetfx.com/images/logo.png"
-               alt=""
-               width="73"
-               style="display:block; border:0; outline:none; height:auto; max-height:78px; max-width:73px; width:73px;" />
-        </td>
-      </tr>
-    </table>
-                  </td>
-                </tr>
-              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" 
+       width="88" height="88" class="logo-table" style="
+  width:88px;
+  height:88px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#ff7a1a,#ff4a1a);
+  box-shadow:0 12px 25px rgba(0,0,0,0.18);
+  margin-bottom:16px;
+">
+<tr>
+    <td height="5"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="middle">
+      <img src="https://nahapetfx.com/images/logo.png"
+           alt=""
+           width="75"
+           style="display:block; border:0; outline:none; height:auto; max-width:75px; width:75px;" />
+    </td>
+  </tr>
+</table>
 
               <h1 style="
                 margin:0;
