@@ -62,11 +62,19 @@ function getVerificationEmailHtml(code) {
         width: 38px !important;
         max-width: 38px !important;
       }
+      .code-box-wrapper {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        padding-top: 0 !important;
+        padding-bottom: 24px !important;
+      }
       .code-box {
         width: 100% !important;
         max-width: 100% !important;
+        margin: 0 auto !important;
         padding: 14px 20px !important;
         box-sizing: border-box !important;
+        display: block !important;
       }
       .code-text {
         font-size: 22px !important;
@@ -118,8 +126,18 @@ function getVerificationEmailHtml(code) {
         font-size: 20px !important;
         letter-spacing: 0.18em !important;
       }
+      .code-box-wrapper {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        padding-top: 0 !important;
+        padding-bottom: 20px !important;
+      }
       .code-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
         padding: 12px 16px !important;
+        box-sizing: border-box !important;
       }
       .meta-text {
         font-size: 11px !important;
@@ -205,10 +223,10 @@ function getVerificationEmailHtml(code) {
           </tr>
 
           <tr>
-            <td align="center" class="inner-padding" style="padding:0 32px 24px;">
+            <td align="center" class="inner-padding code-box-wrapper" style="padding:0 32px 24px;">
               <div class="code-box" style="
                 display:block;
-                width:100%;
+                width:auto;
                 max-width:100%;
                 padding:16px 32px;
                 border-radius:18px;
@@ -216,6 +234,7 @@ function getVerificationEmailHtml(code) {
                 border:1px solid rgba(255,255,255,0.9);
                 box-shadow:0 10px 30px rgba(0,0,0,0.08);
                 box-sizing:border-box;
+                margin:0 auto;
               ">
                 <span style="
                   font-size:13px;
@@ -232,11 +251,12 @@ function getVerificationEmailHtml(code) {
                   font-weight:700;
                   letter-spacing:0.28em;
                   color:#ff6a1a;
-                  padding-left:0.28em;
+                  padding-left:0;
                   display:block;
                   text-align:center;
                   word-break:break-all;
                   overflow-wrap:break-word;
+                  width:100%;
                 ">
                   ${code}
                 </span>
