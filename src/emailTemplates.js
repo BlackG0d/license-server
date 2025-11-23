@@ -104,7 +104,7 @@ function getVerificationEmailHtml(code) {
   margin-bottom:16px;
 ">
 <tr>
-    <td height="15"></td>
+    <td height="10"></td>
   </tr>
   <tr>
     <td align="center" valign="middle">
