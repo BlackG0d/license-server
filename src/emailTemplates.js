@@ -40,12 +40,6 @@ function getVerificationEmailHtml(code) {
       max-width: 100% !important;
       height: auto !important;
     }
-    /* Prevent logo stretching on desktop */
-    .logo-table img {
-      max-width: 75px !important;
-      width: 75px !important;
-      height: auto !important;
-    }
 
     /* Responsive styles */
     @media screen and (max-width: 600px) {
@@ -190,8 +184,8 @@ function getVerificationEmailHtml(code) {
     <td align="center" valign="middle">
       <img src="https://nahapetfx.com/images/logo.png"
            alt=""
-           width="75"
-           style="display:block; border:0; outline:none; height:auto; max-width:75px; width:75px;" />
+           width="89"
+           style="display:block; border:0; outline:none; height:auto;" />
     </td>
   </tr>
 </table>
