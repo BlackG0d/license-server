@@ -113,7 +113,7 @@ async function authMiddleware(req, res, next) {
         if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
             return res.status(401).json({ error: "Invalid or expired token" });
         }
-        console.error("authMiddleware error", err);
+        console.error("authMiddleware errogsr", err);
         return res.status(500).json({ error: "Internal server error" });
     }
 }
@@ -745,7 +745,7 @@ app.post("/auth/forgot-password/start", async (req, res) => {
 
         return res.json({
             message:
-                "Password reset code sent (check email and/or Telegram, depending on configuration).",
+                "Password reset code sent.",
             notificationStatus,
         });
     } catch (err) {
