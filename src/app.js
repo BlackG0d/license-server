@@ -439,7 +439,7 @@ app.post("/auth/continue-registration", async (req, res) => {
 
         return res.json({
             message:
-                "Verification code sent (check email and/or Telegram, depending on configuration).",
+                "Verification code sent.",
             notificationStatus,
         });
     } catch (err) {
