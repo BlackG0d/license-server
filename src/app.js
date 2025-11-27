@@ -1037,27 +1037,59 @@ app.get("/admin/api/summary", adminMiddleware, async (req, res) => {
 
 app.post("/admin/api/licenses", adminMiddleware, async (req, res) => {
     try {
-        const { licenseKey, status = "unused" } = req.body || {};
-        const keyToUse = licenseKey && licenseKey.trim().length > 0 ? licenseKey.trim() : generateLicenseKey();
+        const { licenseKey, status = "unused", count = 1 } = req.body || {};
+        const total = Math.max(1, Math.min(Number(count) || 1, 200));
 
-        if (!isValidLicenseKey(keyToUse)) {
-            return res.status(400).json({ error: "Invalid license key format" });
-        }
         if (!isValidLicenseStatus(status)) {
             return res.status(400).json({ error: "Invalid license status" });
         }
+        if (total > 1 && licenseKey) {
+            return res.status(400).json({ error: "Provide licenseKey only when count is 1" });
+        }
 
         const now = new Date().toISOString();
-        const insertRes = await run(
-            `
-        INSERT INTO licenses (license_key, status, created_at, updated_at)
-        VALUES ($1, $2, $3, $4)
-        RETURNING *
-      `,
-            [keyToUse, status, now, now]
-        );
+        const created = [];
 
-        return res.status(201).json({ license: insertRes.rows[0] });
+        for (let i = 0; i < total; i++) {
+            let inserted = false;
+            let attempts = 0;
+            while (!inserted && attempts < 5) {
+                const keyToUse =
+                    total === 1 && licenseKey && licenseKey.trim().length > 0
+                        ? licenseKey.trim()
+                        : generateLicenseKey();
+                try {
+                    const insertRes = await run(
+                        `
+              INSERT INTO licenses (license_key, status, created_at, updated_at)
+              VALUES ($1, $2, $3, $4)
+              RETURNING *
+            `,
+                        [keyToUse, status, now, now]
+                    );
+                    created.push(insertRes.rows[0]);
+                    inserted = true;
+                } catch (err) {
+                    const isDup = err && err.code === "23505";
+                    if (isDup && total === 1) {
+                        return res.status(500).json({ error: "License key already exists" });
+                    }
+                    if (!isDup) {
+                        console.error("admin create license error", err);
+                        return res.status(500).json({ error: "Internal server error" });
+                    }
+                    attempts += 1;
+                    if (attempts >= 5) {
+                        return res.status(500).json({ error: "Could not generate unique license key" });
+                    }
+                }
+            }
+        }
+
+        if (created.length === 1) {
+            return res.status(201).json({ license: created[0] });
+        }
+        return res.status(201).json({ licenses: created, count: created.length });
     } catch (err) {
         console.error("admin create license error", err);
         const isDup = err && err.code === "23505";

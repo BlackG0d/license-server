@@ -5,14 +5,16 @@
   <title>License Server Admin</title>
   <style>
     :root {
-      --bg: #f2f3f7;
-      --card: rgba(255,255,255,0.86);
-      --border: rgba(255,255,255,0.65);
-      --shadow: 0 18px 45px rgba(0,0,0,0.08);
-      --accent1: #ff7a1a;
-      --accent2: #ff4a1a;
-      --text: #141414;
-      --muted: #4b5563;
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --panel-border: #e5e7eb;
+      --shadow: 0 18px 45px rgba(0,0,0,0.06);
+      --accent1: #171717;
+      --accent2: #3f3f46;
+      --text: #111827;
+      --muted: #6b7280;
+      --soft: #f1f5f9;
+      --pill: #0ea5e9;
     }
     * { box-sizing: border-box; }
     body {
@@ -20,30 +22,88 @@
       margin: 0;
       padding: 0;
       background: var(--bg);
-      background-image: radial-gradient(circle at 0 0, #ffffff 0, #f2f3f7 40%, #e6e9f0 100%);
       color: var(--text);
       min-height: 100vh;
     }
-    .page {
-      max-width: 1040px;
-      margin: 0 auto;
-      padding: 28px 20px 40px;
-    }
-    h1 { margin: 0 0 16px; letter-spacing: 0.01em; }
+    h1 { margin: 0; letter-spacing: 0.01em; }
     h2 { margin: 0 0 12px; }
-    section {
-      background: var(--card);
-      border: 1px solid var(--border);
-      padding: 18px 18px 12px;
+    h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .layout { display: grid; grid-template-columns: 72px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: #1f2937;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 12px;
+      gap: 14px;
+    }
+    .nav-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      display: grid;
+      place-items: center;
+      color: #e5e7eb;
+      cursor: default;
+    }
+    .nav-icon.active { background: #f97316; color: #111827; font-weight: 800; }
+    .main {
+      padding: 28px 30px 42px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
       border-radius: 18px;
-      margin-bottom: 16px;
       box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+      margin-bottom: 18px;
+    }
+    .status { color: var(--muted); font-weight: 600; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 6px;
+    }
+    .stat-label { color: var(--muted); font-size: 13px; letter-spacing: 0.03em; }
+    .stat-value { font-size: 28px; font-weight: 800; }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--soft);
+      border-radius: 999px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
     }
     label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--muted); letter-spacing: 0.01em; }
     input, select {
       width: 100%;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border-radius: 12px;
       border: 1px solid #d1d5db;
       background: #fff;
@@ -52,7 +112,7 @@
       font-size: 14px;
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
     }
-    input:focus, select:focus { outline: 2px solid rgba(255,122,26,0.25); border-color: #fdba74; }
+    input:focus, select:focus { outline: 2px solid rgba(14,165,233,0.15); border-color: #bae6fd; }
     button {
       padding: 11px 16px;
       background: linear-gradient(120deg, var(--accent1), var(--accent2));
@@ -61,14 +121,24 @@
       border-radius: 12px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 12px 25px rgba(255,74,26,0.28);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.12);
       letter-spacing: 0.01em;
     }
     button:hover { filter: brightness(1.05); }
-    button.secondary { background: linear-gradient(120deg, #06b6d4, #3b82f6); box-shadow: 0 12px 25px rgba(59,130,246,0.28); }
-    button.danger { background: linear-gradient(120deg, #f97316, #ef4444); box-shadow: 0 12px 25px rgba(239,68,68,0.25); }
+    button.secondary { background: linear-gradient(120deg, #0ea5e9, #38bdf8); }
+    button.danger { background: linear-gradient(120deg, #f97316, #ef4444); }
+    .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 8px; text-align: left; }
+    th { color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--panel-border); letter-spacing: 0.01em; }
+    tr + tr td { border-top: 1px solid var(--panel-border); }
+    .badge { padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; display: inline-block; }
+    .badge.ok { background: #ecfeff; color: #0ea5e9; }
+    .badge.warn { background: #fff7ed; color: #ea580c; }
+    .badge.danger { background: #fef2f2; color: #b91c1c; }
+    .json-card { margin-top: 12px; }
     pre {
-      background: rgba(255,255,255,0.9);
+      background: var(--soft);
       padding: 12px;
       border-radius: 12px;
       border: 1px solid #e5e7eb;
@@ -77,28 +147,110 @@
       font-size: 13px;
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
     }
-    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-    .status { margin-top: 6px; color: var(--muted); font-weight: 600; }
+    .hidden { display: none !important; }
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 0 0, #ffffff 0, #f2f3f7 40%, #e6e9f0 100%);
+      padding: 24px;
+    }
+    .login-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.08);
+      padding: 24px 24px 18px;
+      width: min(440px, 100%);
+    }
+    .login-card h1 { margin: 0 0 6px; }
+    .login-card p { margin: 0 0 14px; color: var(--muted); }
+    .login-status { margin-top: 8px; color: var(--muted); font-weight: 600; }
+    .autocomplete { position: relative; }
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 10;
+      margin-top: 4px;
+      padding: 6px 0;
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .autocomplete-item:hover { background: #f8fafc; }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .sidebar { flex-direction: row; justify-content: center; } }
   </style>
 </head>
 <body>
-  <div class="page">
-    <h1>Admin Panel</h1>
-    <section>
-      <label for="adminToken">Admin token</label>
-      <input id="adminToken" type="password" placeholder="Paste ADMIN_TOKEN" />
-      <button class="secondary" onclick="loadSummary()">Load data</button>
-      <div id="status" class="status"></div>
-    </section>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <h1>Admin Login</h1>
+      <p>Enter your ADMIN_TOKEN to access the dashboard.</p>
+      <input id="loginToken" type="password" placeholder="ADMIN_TOKEN" />
+      <button style="width:100%; margin-top:6px;" onclick="startAdmin()">Continue</button>
+      <div id="loginStatus" class="login-status">Waiting for token…</div>
+    </div>
+  </div>
 
-    <section>
-      <h2>Create License</h2>
-      <div class="row">
+  <div id="appContainer" class="layout hidden">
+    <aside class="sidebar">
+      <div class="nav-icon active">🏠</div>
+      <div class="nav-icon">🔑</div>
+      <div class="nav-icon">👥</div>
+      <div class="nav-icon">⚙️</div>
+    </aside>
+    <main class="main">
+      <div class="panel header">
         <div>
+          <h1>License Admin</h1>
+          <div class="status" id="status">Paste ADMIN_TOKEN to start</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input id="adminToken" type="password" placeholder="ADMIN_TOKEN" style="width:220px; margin:0;">
+          <button class="secondary" onclick="loadSummary()">Load</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Total Licenses</div>
+          <div class="stat-value" id="stat-total-licenses">—</div>
+          <span class="pill">All keys</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Licenses</div>
+          <div class="stat-value" id="stat-active-licenses">—</div>
+          <span class="pill">status=active</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Users</div>
+          <div class="stat-value" id="stat-total-users">—</div>
+          <span class="pill">accounts</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Disabled Users</div>
+          <div class="stat-value" id="stat-disabled-users">—</div>
+          <span class="pill">blocked</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>Create License</h2>
           <label for="newLicenseKey">License key (leave blank to auto-generate)</label>
           <input id="newLicenseKey" placeholder="XXXX-XXXX-XXXX-XXXX" />
-        </div>
-        <div>
           <label for="newLicenseStatus">Status</label>
           <select id="newLicenseStatus">
             <option value="unused">unused</option>
@@ -106,60 +258,93 @@
             <option value="revoked">revoked</option>
             <option value="expired">expired</option>
           </select>
+          <button onclick="createLicense()">Create license</button>
+          <div class="row" style="margin-top:10px; align-items:flex-end;">
+            <div>
+              <label for="bulkCount">Bulk generate (1-200)</label>
+              <input id="bulkCount" type="number" min="1" max="200" value="10" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="secondary" style="width:100%;" onclick="createBulkLicenses()">Generate bulk</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Update License Status</h2>
+          <label for="updateLicenseKey">License key</label>
+          <input id="updateLicenseKey" placeholder="Existing license key" />
+          <label for="updateLicenseStatus">New status</label>
+          <select id="updateLicenseStatus">
+            <option value="unused">unused</option>
+            <option value="active">active</option>
+            <option value="revoked">revoked</option>
+            <option value="expired">expired</option>
+          </select>
+          <button onclick="updateLicense()">Update status</button>
         </div>
       </div>
-      <button onclick="createLicense()">Create license</button>
-    </section>
 
-    <section>
-      <h2>Update License Status</h2>
-      <label for="updateLicenseKey">License key</label>
-      <input id="updateLicenseKey" placeholder="Existing license key" />
-      <label for="updateLicenseStatus">New status</label>
-      <select id="updateLicenseStatus">
-        <option value="unused">unused</option>
-        <option value="active">active</option>
-        <option value="revoked">revoked</option>
-        <option value="expired">expired</option>
-      </select>
-      <button onclick="updateLicense()">Update status</button>
-    </section>
-
-    <section>
-      <h2>Disable / Enable User</h2>
-      <label for="disableUserId">User ID</label>
-      <input id="disableUserId" type="number" placeholder="User id" />
-      <label for="disableToggle">Action</label>
-      <select id="disableToggle">
-        <option value="true">Disable</option>
-        <option value="false">Enable</option>
-      </select>
-      <button onclick="toggleUser()">Apply</button>
-    </section>
-
-    <section>
-      <h2>Delete User</h2>
-      <label for="deleteUserId">User ID</label>
-      <input id="deleteUserId" type="number" placeholder="User id" />
-      <button class="danger" onclick="deleteUser()">Delete user</button>
-    </section>
-
-    <section>
-      <h2>Data</h2>
-      <div class="row">
-        <div>
-          <h3>Licenses</h3>
-          <pre id="licenseData">[]</pre>
+      <div class="grid-2">
+        <div class="card">
+          <h2>Disable / Enable User</h2>
+          <label for="disableUserEmail">User Email</label>
+          <div class="autocomplete">
+            <input id="disableUserEmail" type="email" placeholder="user@example.com" />
+            <div id="disableSuggest" class="autocomplete-list"></div>
+          </div>
+          <label for="disableToggle">Action</label>
+          <select id="disableToggle">
+            <option value="true">Disable</option>
+            <option value="false">Enable</option>
+          </select>
+          <button onclick="toggleUser()">Apply</button>
         </div>
-        <div>
-          <h3>Users</h3>
-          <pre id="userData">[]</pre>
+        <div class="card">
+          <h2>Delete User</h2>
+          <label for="deleteUserEmail">User Email</label>
+          <div class="autocomplete">
+            <input id="deleteUserEmail" type="email" placeholder="user@example.com" />
+            <div id="deleteSuggest" class="autocomplete-list"></div>
+          </div>
+          <button class="danger" onclick="deleteUser()">Delete user</button>
         </div>
       </div>
-    </section>
+
+      <div class="tables">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Licenses</h2>
+            <span class="pill" id="badge-licenses">0</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Key</th><th>Status</th><th>Email</th><th>Device</th></tr>
+            </thead>
+            <tbody id="licenseTableBody"><tr><td colspan="4">No data</td></tr></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Users</h2>
+            <span class="pill" id="badge-users">0</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Email</th><th>License</th><th>Device</th><th>Status</th></tr>
+            </thead>
+            <tbody id="userTableBody"><tr><td colspan="5">No data</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script>
+    let cachedLicenses = [];
+    let cachedUsers = [];
+
     function adminHeaders() {
       const token = document.getElementById("adminToken").value;
       return { "Content-Type": "application/json", "x-admin-token": token };
@@ -167,17 +352,75 @@
 
     function setStatus(msg) { document.getElementById("status").textContent = msg; }
 
-    async function loadSummary() {
+    function renderStats(licenses, users) {
+      const totalLicenses = licenses.length;
+      const activeLicenses = licenses.filter(l => l.status === "active").length;
+      const totalUsers = users.length;
+      const disabledUsers = users.filter(u => u.disabled).length;
+      document.getElementById("stat-total-licenses").textContent = totalLicenses;
+      document.getElementById("stat-active-licenses").textContent = activeLicenses;
+      document.getElementById("stat-total-users").textContent = totalUsers;
+      document.getElementById("stat-disabled-users").textContent = disabledUsers;
+      document.getElementById("badge-licenses").textContent = totalLicenses + " rows";
+      document.getElementById("badge-users").textContent = totalUsers + " rows";
+    }
+
+    function badgeClass(status) {
+      if (status === "active") return "badge ok";
+      if (status === "unused") return "badge";
+      if (status === "revoked" || status === "expired") return "badge warn";
+      return "badge";
+    }
+
+    function renderTables(licenses, users) {
+      const lBody = document.getElementById("licenseTableBody");
+      const uBody = document.getElementById("userTableBody");
+      lBody.innerHTML = licenses.length === 0 ? '<tr><td colspan="4">No data</td></tr>' : "";
+      uBody.innerHTML = users.length === 0 ? '<tr><td colspan="5">No data</td></tr>' : "";
+
+      licenses.slice(0, 50).forEach(l => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="font-weight:700;">${l.license_key}</td>
+          <td><span class="${badgeClass(l.status)}">${l.status}</span></td>
+          <td>${l.used_by_email || "—"}</td>
+          <td>${l.used_on_device_id || "—"}</td>
+        `;
+        lBody.appendChild(tr);
+      });
+
+      users.slice(0, 50).forEach(u => {
+        const tr = document.createElement("tr");
+        const badge = u.disabled ? '<span class="badge danger">disabled</span>' : '<span class="badge ok">active</span>';
+        tr.innerHTML = `
+          <td>${u.id}</td>
+          <td style="font-weight:700;">${u.email}</td>
+          <td>${u.license_id || "—"}</td>
+          <td>${u.device_id || "—"}</td>
+          <td>${badge}</td>
+        `;
+        uBody.appendChild(tr);
+      });
+    }
+
+    async function loadSummary(opts = {}) {
+      const set = opts.statusSetter || setStatus;
+      const silent = opts.silent;
       try {
-        setStatus("Loading...");
+        if (!silent) set("Loading...");
         const res = await fetch("/admin/api/summary", { headers: adminHeaders() });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed");
-        document.getElementById("licenseData").textContent = JSON.stringify(data.licenses, null, 2);
-        document.getElementById("userData").textContent = JSON.stringify(data.users, null, 2);
-        setStatus("Loaded at " + new Date().toLocaleTimeString());
+        cachedLicenses = data.licenses || [];
+        cachedUsers = data.users || [];
+        renderStats(cachedLicenses, cachedUsers);
+        renderTables(cachedLicenses, cachedUsers);
+        refreshAutocomplete();
+        if (!silent) set("Loaded at " + new Date().toLocaleTimeString());
+        return true;
       } catch (e) {
-        setStatus("Error: " + e.message);
+        set("Error: " + e.message);
+        return false;
       }
     }
 
@@ -196,6 +439,29 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed");
         setStatus("Created license " + data.license.license_key);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function createBulkLicenses() {
+      try {
+        setStatus("Generating bulk licenses...");
+        const count = Number(document.getElementById("bulkCount").value) || 1;
+        const payload = {
+          status: document.getElementById("newLicenseStatus").value,
+          count
+        };
+        const res = await fetch("/admin/api/licenses", {
+          method: "POST",
+          headers: adminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        const created = data.count || (data.licenses ? data.licenses.length : 0);
+        setStatus(`Created ${created} licenses`);
         loadSummary();
       } catch (e) {
         setStatus("Error: " + e.message);
@@ -224,9 +490,18 @@
     async function toggleUser() {
       try {
         setStatus("Updating user...");
-        const userId = document.getElementById("disableUserId").value;
+        const email = document.getElementById("disableUserEmail").value.trim().toLowerCase();
         const disabled = document.getElementById("disableToggle").value === "true";
-        const res = await fetch("/admin/api/users/" + encodeURIComponent(userId) + "/disable", {
+        if (!email) {
+            setStatus("Error: email required");
+            return;
+        }
+        const user = cachedUsers.find(u => (u.email || "").toLowerCase() === email);
+        if (!user) {
+            setStatus("Error: user not found in summary (reload?)");
+            return;
+        }
+        const res = await fetch("/admin/api/users/" + encodeURIComponent(user.id) + "/disable", {
           method: "PATCH",
           headers: adminHeaders(),
           body: JSON.stringify({ disabled })
@@ -243,8 +518,17 @@
     async function deleteUser() {
       try {
         setStatus("Deleting user...");
-        const userId = document.getElementById("deleteUserId").value;
-        const res = await fetch("/admin/api/users/" + encodeURIComponent(userId), {
+        const email = document.getElementById("deleteUserEmail").value.trim().toLowerCase();
+        if (!email) {
+            setStatus("Error: email required");
+            return;
+        }
+        const user = cachedUsers.find(u => (u.email || "").toLowerCase() === email);
+        if (!user) {
+            setStatus("Error: user not found in summary (reload?)");
+            return;
+        }
+        const res = await fetch("/admin/api/users/" + encodeURIComponent(user.id), {
           method: "DELETE",
           headers: adminHeaders()
         });
@@ -256,6 +540,90 @@
         setStatus("Error: " + e.message);
       }
     }
+
+    function setLoginStatus(msg) {
+      const el = document.getElementById("loginStatus");
+      if (el) el.textContent = msg;
+    }
+
+    async function startAdmin() {
+      const token = (document.getElementById("loginToken").value || "").trim();
+      if (!token) {
+        setLoginStatus("Token required");
+        return;
+      }
+      document.getElementById("adminToken").value = token;
+      setLoginStatus("Authenticating…");
+      const ok = await loadSummary({ silent: true, statusSetter: setLoginStatus });
+      if (ok) {
+        localStorage.setItem("ADMIN_TOKEN", token);
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("appContainer").classList.remove("hidden");
+        setStatus("Loaded at " + new Date().toLocaleTimeString());
+      } else {
+        setLoginStatus("Invalid token or network error");
+      }
+    }
+
+    function setupAutocomplete(inputId, listId) {
+      const input = document.getElementById(inputId);
+      const list = document.getElementById(listId);
+      let hideTimer = null;
+
+      const hide = () => { list.style.display = "none"; };
+
+      const showMatches = () => {
+        const query = (input.value || "").toLowerCase();
+        const matches = query.length === 0
+          ? cachedUsers.slice(0, 10)
+          : cachedUsers.filter(u => (u.email || "").toLowerCase().startsWith(query)).slice(0, 10);
+
+        if (matches.length === 0) {
+          list.style.display = "none";
+          return;
+        }
+        list.innerHTML = matches.map(u => `<div class="autocomplete-item" data-email="${u.email}">${u.email}</div>`).join("");
+        list.style.display = "block";
+      };
+
+      input.addEventListener("input", showMatches);
+      input.addEventListener("focus", showMatches);
+      input.addEventListener("blur", () => { hideTimer = setTimeout(hide, 120); });
+
+      list.addEventListener("mousedown", (e) => {
+        const target = e.target.closest(".autocomplete-item");
+        if (!target) return;
+        e.preventDefault();
+        input.value = target.dataset.email;
+        hide();
+      });
+    }
+
+    function refreshAutocomplete() {
+      // Re-render suggestions if a list is open
+      const lists = [
+        { input: "disableUserEmail", list: "disableSuggest" },
+        { input: "deleteUserEmail", list: "deleteSuggest" }
+      ];
+      lists.forEach(({ input, list }) => {
+        const el = document.getElementById(list);
+        if (el && el.style.display === "block") {
+          const inputEl = document.getElementById(input);
+          inputEl && inputEl.dispatchEvent(new Event("input"));
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      setupAutocomplete("disableUserEmail", "disableSuggest");
+      setupAutocomplete("deleteUserEmail", "deleteSuggest");
+      const saved = localStorage.getItem("ADMIN_TOKEN");
+      if (saved) {
+        document.getElementById("loginToken").value = saved;
+        document.getElementById("adminToken").value = saved;
+        // Keep login screen until user explicitly continues.
+      }
+    });
   </script>
 </body>
 </html>
