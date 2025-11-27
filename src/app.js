@@ -5,7 +5,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { run, get } = require("./db");
-const { getVerificationEmailHtml } = require("./emailTemplates");
+const { getVerificationEmailHtml, getPasswordResetEmailHtml } = require("./emailTemplates");
 
 
 const app = express();
@@ -121,8 +121,8 @@ async function sendEmailPasswordResetCode(email, code) {
 
     const subject =
         process.env.SMTP_SUBJECT_PASSWORD_RESET || "Your password reset code";
-    const text = `Password reset code: ${code}\nIt will expire in ${PASSWORD_RESET_EXP_MINUTES} minutes.`;
-    const html = `<p>Password reset code: <b>${code}</b></p><p>It will expire in ${PASSWORD_RESET_EXP_MINUTES} minutes.</p>`;
+    const text = `Your password reset code is: ${code}\nIt will expire in ${PASSWORD_RESET_EXP_MINUTES} minutes.`;
+    const html = getPasswordResetEmailHtml(code, PASSWORD_RESET_EXP_MINUTES);
 
     await mailTransporter.sendMail({
         from,
