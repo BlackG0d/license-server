@@ -64,21 +64,57 @@ function isValidPassword(password) {
     return typeof password === "string" && password.length >= 8;
 }
 
-function authMiddleware(req, res, next) {
-    const auth = req.headers["authorization"];
-    if (!auth) return res.status(401).json({ error: "Missing Authorization header" });
-
-    const [scheme, token] = auth.split(" ");
-    if (scheme !== "Bearer" || !token) {
-        return res.status(401).json({ error: "Invalid Authorization header" });
-    }
-
+async function ensureTokenVersionColumn() {
     try {
+        await run(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0"
+        );
+    } catch (err) {
+        console.error("ensureTokenVersionColumn error", err);
+        throw err;
+    }
+}
+
+async function authMiddleware(req, res, next) {
+    try {
+        const auth = req.headers["authorization"];
+        if (!auth) return res.status(401).json({ error: "Missing Authorization header" });
+
+        const [scheme, token] = auth.split(" ");
+        if (scheme !== "Bearer" || !token) {
+            return res.status(401).json({ error: "Invalid Authorization header" });
+        }
+
         const payload = jwt.verify(token, JWT_SECRET);
-        req.user = payload; // { userId, deviceId }
+
+        await ensureTokenVersionColumn();
+        const user = await get(
+            "SELECT id, device_id, token_version FROM users WHERE id = $1",
+            [payload.userId]
+        );
+
+        if (!user) {
+            return res.status(401).json({ error: "User not found" });
+        }
+
+        const tokenVersion = payload.tokenVersion ?? 0;
+        const currentVersion = user.token_version ?? 0;
+        if (tokenVersion !== currentVersion) {
+            return res.status(401).json({ error: "Token no longer valid" });
+        }
+
+        if (user.device_id && user.device_id !== payload.deviceId) {
+            return res.status(403).json({ error: "Device mismatch" });
+        }
+
+        req.user = { ...payload, tokenVersion, deviceId: user.device_id };
         next();
-    } catch (e) {
-        return res.status(401).json({ error: "Invalid or expired token" });
+    } catch (err) {
+        if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+            return res.status(401).json({ error: "Invalid or expired token" });
+        }
+        console.error("authMiddleware error", err);
+        return res.status(500).json({ error: "Internal server error" });
     }
 }
 
@@ -535,6 +571,8 @@ app.post("/auth/set-password", async (req, res) => {
 
         const { email, deviceId, licenseId } = payload;
 
+        await ensureTokenVersionColumn();
+
         try {
             await ensureLicenseStillValid(licenseId);
         } catch (e) {
@@ -556,8 +594,8 @@ app.post("/auth/set-password", async (req, res) => {
 
         await run(
             `
-      INSERT INTO users (email, password_hash, device_id, license_id)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (email, password_hash, device_id, license_id, token_version)
+      VALUES ($1, $2, $3, $4, 1)
     `,
             [email, passwordHash, deviceId, licenseId]
         );
@@ -579,6 +617,8 @@ app.post("/auth/login", async (req, res) => {
         if (!isValidEmail(email) || !isValidDeviceId(deviceId) || typeof password !== "string") {
             return res.status(400).json({ error: "Invalid credentials" });
         }
+
+        await ensureTokenVersionColumn();
 
         const user = await get(
             "SELECT * FROM users WHERE email = $1",
@@ -622,6 +662,7 @@ app.post("/auth/login", async (req, res) => {
             {
                 userId: user.id,
                 deviceId,
+                tokenVersion: user.token_version ?? 0,
             },
             JWT_SECRET,
             { expiresIn: "1h" }
@@ -843,10 +884,11 @@ app.post("/auth/forgot-password/reset", async (req, res) => {
         }
 
         const passwordHash = await bcrypt.hash(newPassword, 12);
-        await run("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [
-            passwordHash,
-            user.id,
-        ]);
+        await ensureTokenVersionColumn();
+        await run(
+            "UPDATE users SET password_hash = $1, token_version = COALESCE(token_version, 0) + 1, updated_at = NOW() WHERE id = $2",
+            [passwordHash, user.id]
+        );
 
         return res.json({ message: "Password reset successfully" });
     } catch (err) {
