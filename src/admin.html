@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>License Server Admin</title>
+  <style>
+    :root {
+      --bg: #f2f3f7;
+      --card: rgba(255,255,255,0.86);
+      --border: rgba(255,255,255,0.65);
+      --shadow: 0 18px 45px rgba(0,0,0,0.08);
+      --accent1: #ff7a1a;
+      --accent2: #ff4a1a;
+      --text: #141414;
+      --muted: #4b5563;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      background-image: radial-gradient(circle at 0 0, #ffffff 0, #f2f3f7 40%, #e6e9f0 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+    h1 { margin: 0 0 16px; letter-spacing: 0.01em; }
+    h2 { margin: 0 0 12px; }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 18px 18px 12px;
+      border-radius: 18px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+    label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--muted); letter-spacing: 0.01em; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: var(--text);
+      margin-bottom: 12px;
+      font-size: 14px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    }
+    input:focus, select:focus { outline: 2px solid rgba(255,122,26,0.25); border-color: #fdba74; }
+    button {
+      padding: 11px 16px;
+      background: linear-gradient(120deg, var(--accent1), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 25px rgba(255,74,26,0.28);
+      letter-spacing: 0.01em;
+    }
+    button:hover { filter: brightness(1.05); }
+    button.secondary { background: linear-gradient(120deg, #06b6d4, #3b82f6); box-shadow: 0 12px 25px rgba(59,130,246,0.28); }
+    button.danger { background: linear-gradient(120deg, #f97316, #ef4444); box-shadow: 0 12px 25px rgba(239,68,68,0.25); }
+    pre {
+      background: rgba(255,255,255,0.9);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      overflow-x: auto;
+      color: #111827;
+      font-size: 13px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .status { margin-top: 6px; color: var(--muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Admin Panel</h1>
+    <section>
+      <label for="adminToken">Admin token</label>
+      <input id="adminToken" type="password" placeholder="Paste ADMIN_TOKEN" />
+      <button class="secondary" onclick="loadSummary()">Load data</button>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section>
+      <h2>Create License</h2>
+      <div class="row">
+        <div>
+          <label for="newLicenseKey">License key (leave blank to auto-generate)</label>
+          <input id="newLicenseKey" placeholder="XXXX-XXXX-XXXX-XXXX" />
+        </div>
+        <div>
+          <label for="newLicenseStatus">Status</label>
+          <select id="newLicenseStatus">
+            <option value="unused">unused</option>
+            <option value="active">active</option>
+            <option value="revoked">revoked</option>
+            <option value="expired">expired</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="createLicense()">Create license</button>
+    </section>
+
+    <section>
+      <h2>Update License Status</h2>
+      <label for="updateLicenseKey">License key</label>
+      <input id="updateLicenseKey" placeholder="Existing license key" />
+      <label for="updateLicenseStatus">New status</label>
+      <select id="updateLicenseStatus">
+        <option value="unused">unused</option>
+        <option value="active">active</option>
+        <option value="revoked">revoked</option>
+        <option value="expired">expired</option>
+      </select>
+      <button onclick="updateLicense()">Update status</button>
+    </section>
+
+    <section>
+      <h2>Disable / Enable User</h2>
+      <label for="disableUserId">User ID</label>
+      <input id="disableUserId" type="number" placeholder="User id" />
+      <label for="disableToggle">Action</label>
+      <select id="disableToggle">
+        <option value="true">Disable</option>
+        <option value="false">Enable</option>
+      </select>
+      <button onclick="toggleUser()">Apply</button>
+    </section>
+
+    <section>
+      <h2>Delete User</h2>
+      <label for="deleteUserId">User ID</label>
+      <input id="deleteUserId" type="number" placeholder="User id" />
+      <button class="danger" onclick="deleteUser()">Delete user</button>
+    </section>
+
+    <section>
+      <h2>Data</h2>
+      <div class="row">
+        <div>
+          <h3>Licenses</h3>
+          <pre id="licenseData">[]</pre>
+        </div>
+        <div>
+          <h3>Users</h3>
+          <pre id="userData">[]</pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function adminHeaders() {
+      const token = document.getElementById("adminToken").value;
+      return { "Content-Type": "application/json", "x-admin-token": token };
+    }
+
+    function setStatus(msg) { document.getElementById("status").textContent = msg; }
+
+    async function loadSummary() {
+      try {
+        setStatus("Loading...");
+        const res = await fetch("/admin/api/summary", { headers: adminHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        document.getElementById("licenseData").textContent = JSON.stringify(data.licenses, null, 2);
+        document.getElementById("userData").textContent = JSON.stringify(data.users, null, 2);
+        setStatus("Loaded at " + new Date().toLocaleTimeString());
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function createLicense() {
+      try {
+        setStatus("Creating license...");
+        const payload = {
+          licenseKey: document.getElementById("newLicenseKey").value.trim() || undefined,
+          status: document.getElementById("newLicenseStatus").value
+        };
+        const res = await fetch("/admin/api/licenses", {
+          method: "POST",
+          headers: adminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus("Created license " + data.license.license_key);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function updateLicense() {
+      try {
+        setStatus("Updating license...");
+        const licenseKey = document.getElementById("updateLicenseKey").value.trim();
+        const status = document.getElementById("updateLicenseStatus").value;
+        const res = await fetch("/admin/api/licenses/" + encodeURIComponent(licenseKey) + "/status", {
+          method: "PATCH",
+          headers: adminHeaders(),
+          body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus("Updated license " + data.license.license_key + " to " + data.license.status);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function toggleUser() {
+      try {
+        setStatus("Updating user...");
+        const userId = document.getElementById("disableUserId").value;
+        const disabled = document.getElementById("disableToggle").value === "true";
+        const res = await fetch("/admin/api/users/" + encodeURIComponent(userId) + "/disable", {
+          method: "PATCH",
+          headers: adminHeaders(),
+          body: JSON.stringify({ disabled })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus(data.message);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function deleteUser() {
+      try {
+        setStatus("Deleting user...");
+        const userId = document.getElementById("deleteUserId").value;
+        const res = await fetch("/admin/api/users/" + encodeURIComponent(userId), {
+          method: "DELETE",
+          headers: adminHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus(data.message);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+  </script>
+</body>
+</html>

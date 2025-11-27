@@ -4,7 +4,8 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
-const { run, get } = require("./db");
+const { run, get, all } = require("./db");
+const path = require("path");
 const { getVerificationEmailHtml, getPasswordResetEmailHtml } = require("./emailTemplates");
 
 
@@ -12,7 +13,9 @@ const app = express();
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const PASSWORD_RESET_EXP_MINUTES = Number(process.env.PASSWORD_RESET_EXP_MINUTES || 10);
+const VALID_LICENSE_STATUSES = ["unused", "active", "revoked", "expired"];
 
 // ---------- NOTIFICATION CONFIG ----------
 
@@ -44,6 +47,12 @@ function generateRandomCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+function generateLicenseKey() {
+    const randChunk = () =>
+        Math.random().toString(36).replace(/[^a-z0-9]+/gi, "").slice(0, 4).toUpperCase();
+    return `${randChunk()}-${randChunk()}-${randChunk()}-${randChunk()}`;
+}
+
 function addMinutes(date, minutes) {
     return new Date(date.getTime() + minutes * 60000);
 }
@@ -64,6 +73,10 @@ function isValidPassword(password) {
     return typeof password === "string" && password.length >= 8;
 }
 
+function isValidLicenseStatus(status) {
+    return typeof status === "string" && VALID_LICENSE_STATUSES.includes(status);
+}
+
 async function ensureTokenVersionColumn() {
     try {
         await run(
@@ -73,6 +86,22 @@ async function ensureTokenVersionColumn() {
         console.error("ensureTokenVersionColumn error", err);
         throw err;
     }
+}
+
+async function ensureUserDisabledColumn() {
+    try {
+        await run(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false"
+        );
+    } catch (err) {
+        console.error("ensureUserDisabledColumn error", err);
+        throw err;
+    }
+}
+
+async function ensureUserColumns() {
+    await ensureTokenVersionColumn();
+    await ensureUserDisabledColumn();
 }
 
 async function authMiddleware(req, res, next) {
@@ -87,14 +116,18 @@ async function authMiddleware(req, res, next) {
 
         const payload = jwt.verify(token, JWT_SECRET);
 
-        await ensureTokenVersionColumn();
+        await ensureUserColumns();
         const user = await get(
-            "SELECT id, device_id, token_version FROM users WHERE id = $1",
+            "SELECT id, device_id, token_version, disabled FROM users WHERE id = $1",
             [payload.userId]
         );
 
         if (!user) {
             return res.status(401).json({ error: "User not found" });
+        }
+
+        if (user.disabled) {
+            return res.status(403).json({ error: "User disabled" });
         }
 
         const tokenVersion = payload.tokenVersion ?? 0;
@@ -571,7 +604,7 @@ app.post("/auth/set-password", async (req, res) => {
 
         const { email, deviceId, licenseId } = payload;
 
-        await ensureTokenVersionColumn();
+        await ensureUserColumns();
 
         try {
             await ensureLicenseStillValid(licenseId);
@@ -618,7 +651,7 @@ app.post("/auth/login", async (req, res) => {
             return res.status(400).json({ error: "Invalid credentials" });
         }
 
-        await ensureTokenVersionColumn();
+        await ensureUserColumns();
 
         const user = await get(
             "SELECT * FROM users WHERE email = $1",
@@ -626,6 +659,10 @@ app.post("/auth/login", async (req, res) => {
         );
         if (!user) {
             return res.status(400).json({ error: "Invalid email or password" });
+        }
+
+        if (user.disabled) {
+            return res.status(403).json({ error: "User disabled" });
         }
 
         const ok = await bcrypt.compare(password, user.password_hash);
@@ -686,9 +723,14 @@ app.post("/auth/forgot-password/start", async (req, res) => {
             return res.status(400).json({ error: "Invalid payload" });
         }
 
+        await ensureUserDisabledColumn();
         const user = await get("SELECT * FROM users WHERE email = $1", [email]);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.disabled) {
+            return res.status(403).json({ error: "User disabled" });
         }
 
         if (user.device_id && user.device_id !== deviceId) {
@@ -765,9 +807,14 @@ app.post("/auth/forgot-password/verify", async (req, res) => {
             return res.status(400).json({ error: "Invalid payload" });
         }
 
+        await ensureUserDisabledColumn();
         const user = await get("SELECT * FROM users WHERE email = $1", [email]);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.disabled) {
+            return res.status(403).json({ error: "User disabled" });
         }
 
         if (user.device_id && user.device_id !== deviceId) {
@@ -862,9 +909,14 @@ app.post("/auth/forgot-password/reset", async (req, res) => {
 
         const { userId, deviceId } = payload;
 
+        await ensureUserColumns();
         const user = await get("SELECT * FROM users WHERE id = $1", [userId]);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.disabled) {
+            return res.status(403).json({ error: "User disabled" });
         }
 
         if (user.device_id && user.device_id !== deviceId) {
@@ -884,7 +936,6 @@ app.post("/auth/forgot-password/reset", async (req, res) => {
         }
 
         const passwordHash = await bcrypt.hash(newPassword, 12);
-        await ensureTokenVersionColumn();
         await run(
             "UPDATE users SET password_hash = $1, token_version = COALESCE(token_version, 0) + 1, updated_at = NOW() WHERE id = $2",
             [passwordHash, user.id]
@@ -935,6 +986,198 @@ app.get("/me", authMiddleware, async (req, res) => {
         });
     } catch (err) {
         console.error("/me error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// ---------- ADMIN ----------
+
+function adminMiddleware(req, res, next) {
+    if (!ADMIN_TOKEN) {
+        return res.status(500).json({ error: "Admin token not configured" });
+    }
+    const token = req.headers["x-admin-token"];
+    if (token !== ADMIN_TOKEN) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    next();
+}
+
+app.get("/admin", (req, res) => {
+    res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+app.get("/admin/api/summary", adminMiddleware, async (req, res) => {
+    try {
+        await ensureUserDisabledColumn();
+        const licenses = await all(
+            `
+        SELECT id, license_key, status, used_by_email, used_on_device_id, used_at, created_at, updated_at
+        FROM licenses
+        ORDER BY created_at DESC
+        LIMIT 200
+      `,
+            []
+        );
+        const users = await all(
+            `
+        SELECT id, email, license_id, device_id, disabled, created_at, updated_at
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT 200
+      `,
+            []
+        );
+        return res.json({ licenses, users });
+    } catch (err) {
+        console.error("admin summary error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+app.post("/admin/api/licenses", adminMiddleware, async (req, res) => {
+    try {
+        const { licenseKey, status = "unused" } = req.body || {};
+        const keyToUse = licenseKey && licenseKey.trim().length > 0 ? licenseKey.trim() : generateLicenseKey();
+
+        if (!isValidLicenseKey(keyToUse)) {
+            return res.status(400).json({ error: "Invalid license key format" });
+        }
+        if (!isValidLicenseStatus(status)) {
+            return res.status(400).json({ error: "Invalid license status" });
+        }
+
+        const now = new Date().toISOString();
+        const insertRes = await run(
+            `
+        INSERT INTO licenses (license_key, status, created_at, updated_at)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `,
+            [keyToUse, status, now, now]
+        );
+
+        return res.status(201).json({ license: insertRes.rows[0] });
+    } catch (err) {
+        console.error("admin create license error", err);
+        const isDup = err && err.code === "23505";
+        return res.status(500).json({ error: isDup ? "License key already exists" : "Internal server error" });
+    }
+});
+
+app.patch("/admin/api/licenses/:licenseKey/status", adminMiddleware, async (req, res) => {
+    try {
+        const { licenseKey } = req.params;
+        const { status } = req.body || {};
+
+        if (!isValidLicenseKey(licenseKey)) {
+            return res.status(400).json({ error: "Invalid license key format" });
+        }
+        if (!isValidLicenseStatus(status)) {
+            return res.status(400).json({ error: "Invalid license status" });
+        }
+
+        const now = new Date().toISOString();
+        const shouldClear = status === "unused";
+        const updateRes = await run(
+            `
+        UPDATE licenses
+        SET status = $1,
+            used_by_email = CASE WHEN $3 THEN NULL ELSE used_by_email END,
+            used_on_device_id = CASE WHEN $3 THEN NULL ELSE used_on_device_id END,
+            used_at = CASE WHEN $3 THEN NULL ELSE used_at END,
+            updated_at = $2
+        WHERE license_key = $4
+        RETURNING *
+      `,
+            [status, now, shouldClear, licenseKey]
+        );
+
+        if (updateRes.rowCount === 0) {
+            return res.status(404).json({ error: "License not found" });
+        }
+
+        return res.json({ license: updateRes.rows[0] });
+    } catch (err) {
+        console.error("admin update license status error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+app.patch("/admin/api/users/:userId/disable", adminMiddleware, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { disabled = true } = req.body || {};
+
+        if (!userId) {
+            return res.status(400).json({ error: "User id required" });
+        }
+        if (typeof disabled !== "boolean") {
+            return res.status(400).json({ error: "Invalid disabled flag" });
+        }
+
+        await ensureUserColumns();
+        const user = await get("SELECT * FROM users WHERE id = $1", [userId]);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const updateRes = await run(
+            `
+        UPDATE users
+        SET disabled = $1,
+            token_version = COALESCE(token_version, 0) + 1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING id, email, disabled, token_version
+      `,
+            [disabled, userId]
+        );
+
+        return res.json({
+            message: disabled ? "User disabled and tokens invalidated" : "User enabled and tokens invalidated",
+            user: updateRes.rows[0],
+        });
+    } catch (err) {
+        console.error("admin disable user error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+app.delete("/admin/api/users/:userId", adminMiddleware, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        if (!userId) {
+            return res.status(400).json({ error: "User id required" });
+        }
+
+        const user = await get("SELECT id, license_id FROM users WHERE id = $1", [userId]);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        await run("DELETE FROM users WHERE id = $1", [userId]);
+
+        if (user.license_id) {
+            await run(
+                `
+          UPDATE licenses
+          SET status = 'unused',
+              used_by_email = NULL,
+              used_on_device_id = NULL,
+              used_at = NULL,
+              updated_at = NOW()
+          WHERE id = $1
+        `,
+                [user.license_id]
+            );
+        }
+
+        return res.json({
+            message: "User deleted" + (user.license_id ? " and license released" : ""),
+        });
+    } catch (err) {
+        console.error("admin delete user error", err);
         return res.status(500).json({ error: "Internal server error" });
     }
 });
