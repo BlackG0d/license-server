@@ -12,6 +12,7 @@ const app = express();
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+const PASSWORD_RESET_EXP_MINUTES = Number(process.env.PASSWORD_RESET_EXP_MINUTES || 10);
 
 // ---------- NOTIFICATION CONFIG ----------
 
@@ -59,6 +60,10 @@ function isValidLicenseKey(licenseKey) {
     return typeof licenseKey === "string" && licenseKey.trim().length >= 8;
 }
 
+function isValidPassword(password) {
+    return typeof password === "string" && password.length >= 8;
+}
+
 function authMiddleware(req, res, next) {
     const auth = req.headers["authorization"];
     if (!auth) return res.status(401).json({ error: "Missing Authorization header" });
@@ -103,6 +108,32 @@ async function sendEmailVerificationCode(email, code) {
     console.log(`[SMTP] Verification code sent to ${email}`);
 }
 
+async function sendEmailPasswordResetCode(email, code) {
+    if (!mailTransporter) {
+        console.warn("[SMTP] Transport not configured, skipping reset email send");
+        return;
+    }
+
+    const from =
+        process.env.SMTP_FROM ||
+        process.env.EMAIL_FROM ||
+        "No Reply <no-reply@example.com>";
+
+    const subject =
+        process.env.SMTP_SUBJECT_PASSWORD_RESET || "Your password reset code";
+    const text = `Password reset code: ${code}\nIt will expire in ${PASSWORD_RESET_EXP_MINUTES} minutes.`;
+    const html = `<p>Password reset code: <b>${code}</b></p><p>It will expire in ${PASSWORD_RESET_EXP_MINUTES} minutes.</p>`;
+
+    await mailTransporter.sendMail({
+        from,
+        to: email,
+        subject,
+        text,
+        html,
+    });
+    console.log(`[SMTP] Password reset code sent to ${email}`);
+}
+
 async function sendTelegramVerificationCode(email, code) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
         console.warn("[Telegram] BOT_TOKEN or CHAT_ID not configured, skipping Telegram send");
@@ -130,6 +161,33 @@ async function sendTelegramVerificationCode(email, code) {
     }
 
     console.log("[Telegram] Verification code sent to chat", TELEGRAM_CHAT_ID);
+}
+
+async function sendTelegramPasswordResetCode(email, code) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.warn("[Telegram] BOT_TOKEN or CHAT_ID not configured, skipping Telegram reset send");
+        return;
+    }
+
+    const text = `Password reset requested:\nEmail: ${email}\nCode: ${code}`;
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text,
+        }),
+    });
+
+    if (!res.ok) {
+        const body = await res.text();
+        console.error("[Telegram] reset sendMessage failed:", res.status, body);
+        throw new Error(`Telegram send failed with status ${res.status}`);
+    }
+
+    console.log("[Telegram] Password reset code sent to chat", TELEGRAM_CHAT_ID);
 }
 
 // ---------- LICENSE HELPERS ----------
@@ -187,6 +245,22 @@ async function ensureLicenseStillValid(licenseId) {
 }
 
 // ---------- HEALTHCHECK ----------
+
+async function ensurePasswordResetTable() {
+    await run(
+        `
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        device_id TEXT,
+        code_hash TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `
+    );
+}
 
 app.get("/healthcheck", async (req, res) => {
     try {
@@ -440,7 +514,7 @@ app.post("/auth/set-password", async (req, res) => {
     try {
         const { passwordToken, password } = req.body || {};
 
-        if (!passwordToken || typeof password !== "string" || password.length < 8) {
+        if (!passwordToken || !isValidPassword(password)) {
             return res
                 .status(400)
                 .json({ error: "Invalid payload or weak password" });
@@ -556,6 +630,227 @@ app.post("/auth/login", async (req, res) => {
         return res.json({ accessToken });
     } catch (err) {
         console.error("login error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+/**
+ * Forgot password - request reset code
+ */
+app.post("/auth/forgot-password/start", async (req, res) => {
+    try {
+        const { email, deviceId } = req.body || {};
+
+        if (!isValidEmail(email) || !isValidDeviceId(deviceId)) {
+            return res.status(400).json({ error: "Invalid payload" });
+        }
+
+        const user = await get("SELECT * FROM users WHERE email = $1", [email]);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.device_id && user.device_id !== deviceId) {
+            return res.status(403).json({
+                error: "Account is already linked to another device",
+                code: "DEVICE_MISMATCH",
+            });
+        }
+
+        try {
+            await ensureLicenseStillValid(user.license_id);
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(e.status || 400)
+                .json({ error: e.message || "License error" });
+        }
+
+        await ensurePasswordResetTable();
+
+        const code = generateRandomCode();
+        const codeHash = await bcrypt.hash(code, 10);
+        const now = new Date();
+        const expiresAt = addMinutes(now, PASSWORD_RESET_EXP_MINUTES);
+
+        await run(
+            `
+        INSERT INTO password_resets (user_id, device_id, code_hash, expires_at, used, created_at)
+        VALUES ($1, $2, $3, $4, false, $5)
+      `,
+            [user.id, deviceId, codeHash, expiresAt.toISOString(), now.toISOString()]
+        );
+
+        const notificationStatus = {
+            emailSent: false,
+            telegramSent: false,
+        };
+
+        try {
+            await sendEmailPasswordResetCode(email, code);
+            notificationStatus.emailSent = true;
+        } catch (e) {
+            console.error("Failed to send password reset email:", e);
+        }
+
+        try {
+            await sendTelegramPasswordResetCode(email, code);
+            notificationStatus.telegramSent = true;
+        } catch (e) {
+            console.error("Failed to send Telegram password reset code:", e);
+        }
+
+        console.log(`Password reset code for ${email} (for debug): ${code}`);
+
+        return res.json({
+            message:
+                "Password reset code sent (check email and/or Telegram, depending on configuration).",
+            notificationStatus,
+        });
+    } catch (err) {
+        console.error("forgot-password/start error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+/**
+ * Forgot password - verify code -> resetToken
+ */
+app.post("/auth/forgot-password/verify", async (req, res) => {
+    try {
+        const { email, deviceId, code } = req.body || {};
+
+        if (!isValidEmail(email) || !isValidDeviceId(deviceId) || !code) {
+            return res.status(400).json({ error: "Invalid payload" });
+        }
+
+        const user = await get("SELECT * FROM users WHERE email = $1", [email]);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.device_id && user.device_id !== deviceId) {
+            return res.status(403).json({
+                error: "Account is already linked to another device",
+                code: "DEVICE_MISMATCH",
+            });
+        }
+
+        try {
+            await ensureLicenseStillValid(user.license_id);
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(e.status || 400)
+                .json({ error: e.message || "License error" });
+        }
+
+        await ensurePasswordResetTable();
+
+        const now = new Date();
+        const resetRow = await get(
+            `
+        SELECT * FROM password_resets
+        WHERE user_id = $1 AND used = false
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+            [user.id]
+        );
+
+        if (!resetRow) {
+            return res.status(400).json({ error: "No active reset found" });
+        }
+
+        if (resetRow.device_id && resetRow.device_id !== deviceId) {
+            return res.status(403).json({
+                error: "Reset request was started from another device",
+                code: "DEVICE_MISMATCH",
+            });
+        }
+
+        if (new Date(resetRow.expires_at) < now) {
+            return res.status(400).json({ error: "Reset code expired" });
+        }
+
+        const isMatch = await bcrypt.compare(code, resetRow.code_hash);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Invalid reset code" });
+        }
+
+        await run("UPDATE password_resets SET used = true WHERE id = $1", [resetRow.id]);
+
+        const resetToken = jwt.sign(
+            {
+                type: "password_reset",
+                userId: user.id,
+                deviceId,
+            },
+            JWT_SECRET,
+            { expiresIn: "15m" }
+        );
+
+        return res.json({ resetToken });
+    } catch (err) {
+        console.error("forgot-password/verify error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+/**
+ * Forgot password - finalize reset
+ */
+app.post("/auth/forgot-password/reset", async (req, res) => {
+    try {
+        const { resetToken, newPassword } = req.body || {};
+
+        if (!resetToken || !isValidPassword(newPassword)) {
+            return res.status(400).json({ error: "Invalid payload or weak password" });
+        }
+
+        let payload;
+        try {
+            payload = jwt.verify(resetToken, JWT_SECRET);
+        } catch (e) {
+            return res.status(400).json({ error: "Invalid or expired reset token" });
+        }
+
+        if (payload.type !== "password_reset") {
+            return res.status(400).json({ error: "Wrong token type" });
+        }
+
+        const { userId, deviceId } = payload;
+
+        const user = await get("SELECT * FROM users WHERE id = $1", [userId]);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.device_id && user.device_id !== deviceId) {
+            return res.status(403).json({
+                error: "Account is already linked to another device",
+                code: "DEVICE_MISMATCH",
+            });
+        }
+
+        try {
+            await ensureLicenseStillValid(user.license_id);
+        } catch (e) {
+            console.error(e);
+            return res
+                .status(e.status || 400)
+                .json({ error: e.message || "License error" });
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 12);
+        await run("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [
+            passwordHash,
+            user.id,
+        ]);
+
+        return res.json({ message: "Password reset successfully" });
+    } catch (err) {
+        console.error("forgot-password/reset error", err);
         return res.status(500).json({ error: "Internal server error" });
     }
 });
