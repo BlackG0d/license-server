@@ -312,13 +312,11 @@
           <div class="card">
             <h2>Create License</h2>
             <label for="newLicenseKey">License key (leave blank to auto-generate)</label>
-            <input id="newLicenseKey" placeholder="XXXX-XXXX-XXXX-XXXX" />
+            <input id="newLicenseKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" />
             <label for="newLicenseStatus">Status</label>
             <select id="newLicenseStatus">
+              <option value="pro">pro</option>
               <option value="unused">unused</option>
-              <option value="active">active</option>
-              <option value="revoked">revoked</option>
-              <option value="expired">expired</option>
             </select>
             <button onclick="createLicense()">Create license</button>
             <div class="row" style="margin-top:10px; align-items:flex-end;">
@@ -345,6 +343,7 @@
             <input id="updateLicenseKey" placeholder="Existing license key" />
             <label for="updateLicenseStatus">New status</label>
             <select id="updateLicenseStatus">
+              <option value="pro">pro</option>
               <option value="unused">unused</option>
               <option value="active">active</option>
               <option value="revoked">revoked</option>
@@ -460,6 +459,7 @@
 
     function badgeClass(status) {
       if (status === "active") return "badge ok";
+      if (status === "pro") return "badge ok";
       if (status === "unused") return "badge";
       if (status === "revoked" || status === "expired") return "badge warn";
       return "badge";

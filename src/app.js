@@ -16,7 +16,7 @@ app.use(express.json());
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const PASSWORD_RESET_EXP_MINUTES = Number(process.env.PASSWORD_RESET_EXP_MINUTES || 10);
-const VALID_LICENSE_STATUSES = ["unused", "active", "revoked", "expired"];
+const VALID_LICENSE_STATUSES = ["unused", "pro", "active", "revoked", "expired"];
 
 // ---------- NOTIFICATION CONFIG ----------
 
@@ -49,9 +49,17 @@ function generateRandomCode() {
 }
 
 function generateLicenseKey() {
-    // Use crypto for stronger uniqueness, keeping a readable 4x4 segmented format
-    const bytes = crypto.randomBytes(8).toString("hex").toUpperCase(); // 16 hex chars
-    return `${bytes.slice(0, 4)}-${bytes.slice(4, 8)}-${bytes.slice(8, 12)}-${bytes.slice(12, 16)}`;
+    // 4 groups of 5 using high-contrast chars (A-Z, 2-9) to match admin UI format
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const chunk = () => {
+        const bytes = crypto.randomBytes(5);
+        let out = "";
+        for (let i = 0; i < bytes.length; i++) {
+            out += alphabet[bytes[i] % alphabet.length];
+        }
+        return out;
+    };
+    return `${chunk()}-${chunk()}-${chunk()}-${chunk()}`;
 }
 
 function addMinutes(date, minutes) {
