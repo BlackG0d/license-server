@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { run, get, all } = require("./db");
+const crypto = require("crypto");
 const path = require("path");
 const { getVerificationEmailHtml, getPasswordResetEmailHtml } = require("./emailTemplates");
 
@@ -48,9 +49,9 @@ function generateRandomCode() {
 }
 
 function generateLicenseKey() {
-    const randChunk = () =>
-        Math.random().toString(36).replace(/[^a-z0-9]+/gi, "").slice(0, 4).toUpperCase();
-    return `${randChunk()}-${randChunk()}-${randChunk()}-${randChunk()}`;
+    // Use crypto for stronger uniqueness, keeping a readable 4x4 segmented format
+    const bytes = crypto.randomBytes(8).toString("hex").toUpperCase(); // 16 hex chars
+    return `${bytes.slice(0, 4)}-${bytes.slice(4, 8)}-${bytes.slice(8, 12)}-${bytes.slice(12, 16)}`;
 }
 
 function addMinutes(date, minutes) {
@@ -1053,7 +1054,7 @@ app.post("/admin/api/licenses", adminMiddleware, async (req, res) => {
         for (let i = 0; i < total; i++) {
             let inserted = false;
             let attempts = 0;
-            while (!inserted && attempts < 5) {
+            while (!inserted && attempts < 20) {
                 const keyToUse =
                     total === 1 && licenseKey && licenseKey.trim().length > 0
                         ? licenseKey.trim()
@@ -1079,7 +1080,7 @@ app.post("/admin/api/licenses", adminMiddleware, async (req, res) => {
                         return res.status(500).json({ error: "Internal server error" });
                     }
                     attempts += 1;
-                    if (attempts >= 5) {
+                    if (attempts >= 20) {
                         return res.status(500).json({ error: "Could not generate unique license key" });
                     }
                 }
