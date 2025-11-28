@@ -315,8 +315,8 @@
             <input id="newLicenseKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" />
             <label for="newLicenseStatus">Status</label>
             <select id="newLicenseStatus">
-              <option value="pro">pro</option>
               <option value="unused">unused</option>
+              <option value="pro">pro</option>
             </select>
             <button onclick="createLicense()">Create license</button>
             <div class="row" style="margin-top:10px; align-items:flex-end;">
@@ -330,7 +330,10 @@
               </div>
             </div>
             <div style="margin-top:14px;">
-              <h3>Last generated</h3>
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <h3>Last generated</h3>
+                <button id="copyAllKeysBtn" class="copy-btn" onclick="copyAllKeys()" style="display:none;">Copy all</button>
+              </div>
               <div id="createdKeysList" class="key-list">
                 <div class="key-item" style="justify-content:center;">No keys yet</div>
               </div>
@@ -350,6 +353,27 @@
               <option value="expired">expired</option>
             </select>
             <button onclick="updateLicense()">Update status</button>
+          </div>
+          <div class="card">
+            <h2>Get Licenses by Status</h2>
+            <label for="filterLicenseStatus">Status</label>
+            <select id="filterLicenseStatus">
+              <option value="unused">unused</option>
+              <option value="pro">pro</option>
+              <option value="active">active</option>
+              <option value="revoked">revoked</option>
+              <option value="expired">expired</option>
+            </select>
+            <button onclick="fetchLicensesByStatus()">Load licenses</button>
+            <div style="margin-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <h3>Results</h3>
+                <button id="copyFilteredKeysBtn" class="copy-btn" onclick="copyFilteredKeys()" style="display:none;">Copy all</button>
+              </div>
+              <div id="filteredKeysList" class="key-list">
+                <div class="key-item" style="justify-content:center;">No data</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -397,6 +421,7 @@
     let cachedLicenses = [];
     let cachedUsers = [];
     let recentKeys = [];
+    let filteredKeys = [];
 
     function adminHeaders() {
       const token = document.getElementById("adminToken").value;
@@ -405,13 +430,38 @@
 
     function renderCreatedKeys() {
       const container = document.getElementById("createdKeysList");
+      const copyAllBtn = document.getElementById("copyAllKeysBtn");
       if (!container) return;
       if (!recentKeys.length) {
         container.innerHTML = '<div class="key-item" style="justify-content:center;">No keys yet</div>';
+        if (copyAllBtn) copyAllBtn.style.display = "none";
         return;
       }
+      if (copyAllBtn) copyAllBtn.style.display = "inline-flex";
       container.innerHTML = recentKeys
         .slice(0, 10)
+        .map(
+          (k) => `
+          <div class="key-item">
+            <span>${k}</span>
+            <button class="copy-btn" data-key="${k}" onclick="copyKey('${k}')">Copy</button>
+          </div>`
+        )
+        .join("");
+    }
+
+    function renderFilteredKeys() {
+      const container = document.getElementById("filteredKeysList");
+      const copyBtn = document.getElementById("copyFilteredKeysBtn");
+      if (!container) return;
+      if (!filteredKeys.length) {
+        container.innerHTML = '<div class="key-item" style="justify-content:center;">No data</div>';
+        if (copyBtn) copyBtn.style.display = "none";
+        return;
+      }
+      if (copyBtn) copyBtn.style.display = "inline-flex";
+      container.innerHTML = filteredKeys
+        .slice(0, 20)
         .map(
           (k) => `
           <div class="key-item">
@@ -426,6 +476,33 @@
       try {
         await navigator.clipboard.writeText(key);
         setStatus("Copied " + key);
+      } catch (e) {
+        setStatus("Copy failed");
+      }
+    }
+
+    async function copyFilteredKeys() {
+      if (!filteredKeys.length) {
+        setStatus("No keys to copy");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(filteredKeys.join("\n"));
+        setStatus("Copied " + filteredKeys.length + " keys");
+      } catch (e) {
+        setStatus("Copy failed");
+      }
+    }
+
+    async function copyAllKeys() {
+      if (!recentKeys.length) {
+        setStatus("No keys to copy");
+        return;
+      }
+      try {
+        const payload = recentKeys.join("\n");
+        await navigator.clipboard.writeText(payload);
+        setStatus("Copied " + recentKeys.length + " keys");
       } catch (e) {
         setStatus("Copy failed");
       }
@@ -520,8 +597,9 @@
     async function createLicense() {
       try {
         setStatus("Creating license...");
+        const manualKey = document.getElementById("newLicenseKey").value.trim();
         const payload = {
-          licenseKey: document.getElementById("newLicenseKey").value.trim() || undefined,
+          licenseKey: manualKey || undefined,
           status: document.getElementById("newLicenseStatus").value
         };
         const res = await fetch("/admin/api/licenses", {
@@ -531,7 +609,7 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed");
-        const key = data.license?.license_key;
+        const key = data.license?.license_key || manualKey || "";
         if (key) {
           recentKeys = [key, ...recentKeys].slice(0, 20);
           renderCreatedKeys();
@@ -558,14 +636,35 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed");
-        const created = data.count || (data.licenses ? data.licenses.length : 0);
-        const keys = (data.licenses || []).map(l => l.license_key);
+        const created = data.count || (data.licenses ? data.licenses.length : data.license ? 1 : 0);
+        const keys = data.licenses
+          ? data.licenses.map(l => l.license_key)
+          : data.license && data.license.license_key
+            ? [data.license.license_key]
+            : [];
         if (keys.length) {
           recentKeys = [...keys, ...recentKeys].slice(0, 20);
           renderCreatedKeys();
         }
         setStatus(`Created ${created} licenses`);
         loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function fetchLicensesByStatus() {
+      try {
+        setStatus("Loading licenses...");
+        const status = document.getElementById("filterLicenseStatus").value;
+        const res = await fetch("/admin/api/licenses?status=" + encodeURIComponent(status), {
+          headers: adminHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        filteredKeys = (data.licenses || []).map(l => l.license_key);
+        renderFilteredKeys();
+        setStatus(`Loaded ${filteredKeys.length} ${status} licenses`);
       } catch (e) {
         setStatus("Error: " + e.message);
       }
@@ -731,6 +830,7 @@
         el.addEventListener("click", () => switchSection(el.dataset.section));
       });
       renderCreatedKeys();
+      renderFilteredKeys();
     });
   </script>
 </body>

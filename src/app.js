@@ -1044,6 +1044,32 @@ app.get("/admin/api/summary", adminMiddleware, async (req, res) => {
     }
 });
 
+app.get("/admin/api/licenses", adminMiddleware, async (req, res) => {
+    try {
+        const status = (req.query.status || "").toLowerCase();
+        if (!status) {
+            return res.status(400).json({ error: "Status required" });
+        }
+        if (!isValidLicenseStatus(status)) {
+            return res.status(400).json({ error: "Invalid license status" });
+        }
+        const rows = await all(
+            `
+        SELECT license_key, status, used_by_email, used_on_device_id, used_at, created_at
+        FROM licenses
+        WHERE status = $1
+        ORDER BY created_at DESC
+        LIMIT 1000
+      `,
+            [status]
+        );
+        return res.json({ licenses: rows });
+    } catch (err) {
+        console.error("admin list licenses by status error", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 app.post("/admin/api/licenses", adminMiddleware, async (req, res) => {
     try {
         const { licenseKey, status = "unused", count = 1 } = req.body || {};
