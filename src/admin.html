@@ -305,6 +305,16 @@
             </table>
           </div>
         </div>
+
+        <div class="card" style="margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Unused Licenses</h2>
+            <button id="copyUnusedKeysBtn" class="copy-btn" onclick="copyUnusedKeys()" style="display:none;">Copy all</button>
+          </div>
+          <div id="unusedKeysList" class="key-list" style="margin-top:8px;">
+            <div class="key-item" style="justify-content:center;">No data</div>
+          </div>
+        </div>
       </section>
 
       <section class="content-section" data-section="licenses">
@@ -367,7 +377,10 @@
             <button onclick="fetchLicensesByStatus()">Load licenses</button>
             <div style="margin-top:14px;">
               <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                <h3>Results</h3>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <h3 style="margin:0;">Results</h3>
+                  <span class="pill" id="filteredKeysCount">0</span>
+                </div>
                 <button id="copyFilteredKeysBtn" class="copy-btn" onclick="copyFilteredKeys()" style="display:none;">Copy all</button>
               </div>
               <div id="filteredKeysList" class="key-list">
@@ -422,6 +435,7 @@
     let cachedUsers = [];
     let recentKeys = [];
     let filteredKeys = [];
+    let unusedKeys = [];
 
     function adminHeaders() {
       const token = document.getElementById("adminToken").value;
@@ -450,10 +464,34 @@
         .join("");
     }
 
+    function renderUnusedKeys() {
+      const container = document.getElementById("unusedKeysList");
+      const copyBtn = document.getElementById("copyUnusedKeysBtn");
+      if (!container) return;
+      if (!unusedKeys.length) {
+        container.innerHTML = '<div class="key-item" style="justify-content:center;">No data</div>';
+        if (copyBtn) copyBtn.style.display = "none";
+        return;
+      }
+      if (copyBtn) copyBtn.style.display = "inline-flex";
+      container.innerHTML = unusedKeys
+        .slice(0, 20)
+        .map(
+          (k) => `
+          <div class="key-item">
+            <span>${k}</span>
+            <button class="copy-btn" data-key="${k}" onclick="copyKey('${k}')">Copy</button>
+          </div>`
+        )
+        .join("");
+    }
+
     function renderFilteredKeys() {
       const container = document.getElementById("filteredKeysList");
       const copyBtn = document.getElementById("copyFilteredKeysBtn");
+      const countBadge = document.getElementById("filteredKeysCount");
       if (!container) return;
+      if (countBadge) countBadge.textContent = filteredKeys.length;
       if (!filteredKeys.length) {
         container.innerHTML = '<div class="key-item" style="justify-content:center;">No data</div>';
         if (copyBtn) copyBtn.style.display = "none";
@@ -489,6 +527,19 @@
       try {
         await navigator.clipboard.writeText(filteredKeys.join("\n"));
         setStatus("Copied " + filteredKeys.length + " keys");
+      } catch (e) {
+        setStatus("Copy failed");
+      }
+    }
+
+    async function copyUnusedKeys() {
+      if (!unusedKeys.length) {
+        setStatus("No keys to copy");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(unusedKeys.join("\n"));
+        setStatus("Copied " + unusedKeys.length + " unused keys");
       } catch (e) {
         setStatus("Copy failed");
       }
@@ -571,6 +622,9 @@
         `;
         uBody.appendChild(tr);
       });
+
+      unusedKeys = licenses.filter(l => l.status === "unused").map(l => l.license_key);
+      renderUnusedKeys();
     }
 
     async function loadSummary(opts = {}) {
@@ -587,6 +641,7 @@
         renderTables(cachedLicenses, cachedUsers);
         refreshAutocomplete();
         if (!silent) set("Loaded at " + new Date().toLocaleTimeString());
+        renderUnusedKeys();
         return true;
       } catch (e) {
         set("Error: " + e.message);
@@ -831,6 +886,7 @@
       });
       renderCreatedKeys();
       renderFilteredKeys();
+      renderUnusedKeys();
     });
   </script>
 </body>
