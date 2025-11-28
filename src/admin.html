@@ -268,6 +268,11 @@
             <span class="pill">status=active</span>
           </div>
           <div class="stat-card">
+            <div class="stat-label">Unused Licenses</div>
+            <div class="stat-value" id="stat-unused-licenses">—</div>
+            <span class="pill">status=unused</span>
+          </div>
+          <div class="stat-card">
             <div class="stat-label">Users</div>
             <div class="stat-value" id="stat-total-users">—</div>
             <span class="pill">accounts</span>
@@ -306,15 +311,6 @@
           </div>
         </div>
 
-        <div class="card" style="margin-top:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>Unused Licenses</h2>
-            <button id="copyUnusedKeysBtn" class="copy-btn" onclick="copyUnusedKeys()" style="display:none;">Copy all</button>
-          </div>
-          <div id="unusedKeysList" class="key-list" style="margin-top:8px;">
-            <div class="key-item" style="justify-content:center;">No data</div>
-          </div>
-        </div>
       </section>
 
       <section class="content-section" data-section="licenses">
@@ -435,7 +431,6 @@
     let cachedUsers = [];
     let recentKeys = [];
     let filteredKeys = [];
-    let unusedKeys = [];
 
     function adminHeaders() {
       const token = document.getElementById("adminToken").value;
@@ -454,28 +449,6 @@
       if (copyAllBtn) copyAllBtn.style.display = "inline-flex";
       container.innerHTML = recentKeys
         .slice(0, 10)
-        .map(
-          (k) => `
-          <div class="key-item">
-            <span>${k}</span>
-            <button class="copy-btn" data-key="${k}" onclick="copyKey('${k}')">Copy</button>
-          </div>`
-        )
-        .join("");
-    }
-
-    function renderUnusedKeys() {
-      const container = document.getElementById("unusedKeysList");
-      const copyBtn = document.getElementById("copyUnusedKeysBtn");
-      if (!container) return;
-      if (!unusedKeys.length) {
-        container.innerHTML = '<div class="key-item" style="justify-content:center;">No data</div>';
-        if (copyBtn) copyBtn.style.display = "none";
-        return;
-      }
-      if (copyBtn) copyBtn.style.display = "inline-flex";
-      container.innerHTML = unusedKeys
-        .slice(0, 20)
         .map(
           (k) => `
           <div class="key-item">
@@ -532,19 +505,6 @@
       }
     }
 
-    async function copyUnusedKeys() {
-      if (!unusedKeys.length) {
-        setStatus("No keys to copy");
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(unusedKeys.join("\n"));
-        setStatus("Copied " + unusedKeys.length + " unused keys");
-      } catch (e) {
-        setStatus("Copy failed");
-      }
-    }
-
     async function copyAllKeys() {
       if (!recentKeys.length) {
         setStatus("No keys to copy");
@@ -575,10 +535,12 @@
     function renderStats(licenses, users) {
       const totalLicenses = licenses.length;
       const activeLicenses = licenses.filter(l => l.status === "active").length;
+      const unusedLicenses = licenses.filter(l => l.status === "unused").length;
       const totalUsers = users.length;
       const disabledUsers = users.filter(u => u.disabled).length;
       document.getElementById("stat-total-licenses").textContent = totalLicenses;
       document.getElementById("stat-active-licenses").textContent = activeLicenses;
+      document.getElementById("stat-unused-licenses").textContent = unusedLicenses;
       document.getElementById("stat-total-users").textContent = totalUsers;
       document.getElementById("stat-disabled-users").textContent = disabledUsers;
       document.getElementById("badge-licenses").textContent = totalLicenses + " rows";
@@ -623,8 +585,6 @@
         uBody.appendChild(tr);
       });
 
-      unusedKeys = licenses.filter(l => l.status === "unused").map(l => l.license_key);
-      renderUnusedKeys();
     }
 
     async function loadSummary(opts = {}) {
@@ -641,7 +601,6 @@
         renderTables(cachedLicenses, cachedUsers);
         refreshAutocomplete();
         if (!silent) set("Loaded at " + new Date().toLocaleTimeString());
-        renderUnusedKeys();
         return true;
       } catch (e) {
         set("Error: " + e.message);
@@ -886,7 +845,6 @@
       });
       renderCreatedKeys();
       renderFilteredKeys();
-      renderUnusedKeys();
     });
   </script>
 </body>
