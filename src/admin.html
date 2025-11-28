@@ -223,6 +223,27 @@
     .content-section { display: none; }
     .content-section.active { display: block; }
     @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .sidebar { flex-direction: row; justify-content: center; } }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      padding: 20px;
+      width: min(420px, 92vw);
+      border: 1px solid #e5e7eb;
+    }
+    .modal-card h3 { margin: 0 0 8px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -426,11 +447,23 @@
     </main>
   </div>
 
+  <div id="confirmOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Delete this user?</h3>
+      <p class="status" id="confirmDeleteLabel">Are you sure you want to delete this user?</p>
+      <div class="modal-actions">
+        <button class="danger" onclick="confirmDeleteUser()">Yes, Delete</button>
+        <button class="secondary" onclick="cancelDeleteUser()">FUCK, NO, GO BACK!!</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let cachedLicenses = [];
     let cachedUsers = [];
     let recentKeys = [];
     let filteredKeys = [];
+    let pendingDeleteUser = null;
 
     function adminHeaders() {
       const token = document.getElementById("adminToken").value;
@@ -733,7 +766,6 @@
 
     async function deleteUser() {
       try {
-        setStatus("Deleting user...");
         const email = document.getElementById("deleteUserEmail").value.trim().toLowerCase();
         if (!email) {
             setStatus("Error: email required");
@@ -744,6 +776,31 @@
             setStatus("Error: user not found in summary (reload?)");
             return;
         }
+        pendingDeleteUser = user;
+        const label = document.getElementById("confirmDeleteLabel");
+        if (label) label.textContent = `Delete user ${user.email}? This cannot be undone.`;
+        document.getElementById("confirmOverlay").classList.remove("hidden");
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    function cancelDeleteUser() {
+      pendingDeleteUser = null;
+      document.getElementById("confirmOverlay").classList.add("hidden");
+    }
+
+    async function confirmDeleteUser() {
+      if (!pendingDeleteUser) {
+        setStatus("Error: no user selected");
+        document.getElementById("confirmOverlay").classList.add("hidden");
+        return;
+      }
+      const user = pendingDeleteUser;
+      pendingDeleteUser = null;
+      document.getElementById("confirmOverlay").classList.add("hidden");
+      try {
+        setStatus("Deleting user...");
         const res = await fetch("/admin/api/users/" + encodeURIComponent(user.id), {
           method: "DELETE",
           headers: adminHeaders()
