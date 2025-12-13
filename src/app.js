@@ -13,7 +13,7 @@ const { getVerificationEmailHtml, getPasswordResetEmailHtml } = require("./email
 const app = express();
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+const JWT_SECRET = process.env.JWT_SECRET || "YOU-TOUCH-MY-TALALA";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 const PASSWORD_RESET_EXP_MINUTES = Number(process.env.PASSWORD_RESET_EXP_MINUTES || 10);
 const VALID_LICENSE_STATUSES = ["unused", "pro", "active", "revoked", "expired"];
