@@ -11,6 +11,47 @@ const { getVerificationEmailHtml } = require("./emailTemplates");
 const app = express();
 app.use(express.json());
 
+// ---------- INTERNAL: issue license from PayFX ----------
+function isValidIssueSecret(req) {
+  const secret = req.headers["x-license-issue-secret"];
+  return secret && secret === process.env.LICENSE_ISSUE_SECRET;
+}
+
+app.post("/internal/issue-license", async (req, res) => {
+  try {
+    if (!process.env.LICENSE_ISSUE_SECRET) {
+      return res.status(500).json({ ok: false, error: "LICENSE_ISSUE_SECRET missing" });
+    }
+    if (!isValidIssueSecret(req)) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
+    const { license_key } = req.body || {};
+    if (!isValidLicenseKey(license_key)) {
+      return res.status(400).json({ ok: false, error: "Invalid license_key" });
+    }
+
+    const inserted = await get(
+      `
+      INSERT INTO licenses (license_key, status, created_at, updated_at)
+      VALUES ($1, 'unused', NOW(), NOW())
+      ON CONFLICT (license_key) DO NOTHING
+      RETURNING id, license_key, status
+      `,
+      [String(license_key)]
+    );
+
+    const license =
+      inserted ||
+      (await get("SELECT id, license_key, status FROM licenses WHERE license_key = $1", [String(license_key)]));
+
+    return res.status(200).json({ ok: true, license });
+  } catch (err) {
+    console.error("issue-license error", err);
+    return res.status(500).json({ ok: false, error: err.message || String(err) });
+  }
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 // ---------- NOTIFICATION CONFIG ----------
