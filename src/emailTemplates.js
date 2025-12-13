@@ -1,10 +1,16 @@
-
-function getVerificationEmailHtml(code) {
+function buildCodeEmailHtml({
+  titleText,
+  subtitleText,
+  bodyText,
+  codeLabelText,
+  code,
+  metaText,
+}) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MyPasSwordX Verification Code</title>
+  <title>${titleText}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     /* General resets */
@@ -206,7 +212,7 @@ function getVerificationEmailHtml(code) {
                 color:#ff6a1a;
                 margin-bottom:12px;
               ">
-                Verification Code
+                ${subtitleText}
               </div>
 
               <p class="body-text" style="
@@ -216,8 +222,7 @@ function getVerificationEmailHtml(code) {
                 line-height:1.5;
                 color:#555555;
               ">
-                Use this code to verify your NahapetFX account
-                and continue working in the <strong>MyPasSwordX</strong> app.
+                ${bodyText}
               </p>
             </td>
           </tr>
@@ -244,7 +249,7 @@ function getVerificationEmailHtml(code) {
                   display:block;
                   margin-bottom:4px;
                 ">
-                  Your Code
+                  ${codeLabelText}
                 </span>
                 <span class="code-text" style="
                   font-size:28px;
@@ -272,9 +277,7 @@ function getVerificationEmailHtml(code) {
                 line-height:1.6;
                 color:#888888;
               ">
-                The code is valid for
-                <strong>15 minutes</strong> and can only be used once.
-                If you did not request this code, simply ignore this email.
+                ${metaText}
               </p>
             </td>
           </tr>
@@ -317,6 +320,32 @@ function getVerificationEmailHtml(code) {
 </html>`;
 }
 
+function getVerificationEmailHtml(code) {
+  return buildCodeEmailHtml({
+    titleText: "MyPasSwordX Verification Code",
+    subtitleText: "Verification Code",
+    bodyText:
+      "Use this code to verify your NahapetFX account and continue working in the <strong>MyPasSwordX</strong> app.",
+    codeLabelText: "Your Code",
+    code,
+    metaText:
+      "The code is valid for <strong>15 minutes</strong> and can only be used once. If you did not request this code, simply ignore this email.",
+  });
+}
+
+function getPasswordResetEmailHtml(code, expirationMinutes = 10) {
+  return buildCodeEmailHtml({
+    titleText: "MyPasSwordX Password Reset",
+    subtitleText: "Password Reset",
+    bodyText:
+      "Use this code to reset your password for the <strong>MyPasSwordX</strong> app. If you did not request a password reset, you can safely ignore this email.",
+    codeLabelText: "Reset Code",
+    code,
+    metaText: `The code is valid for <strong>${expirationMinutes} minutes</strong> and can only be used once.`,
+  });
+}
+
 module.exports = {
   getVerificationEmailHtml,
+  getPasswordResetEmailHtml,
 };

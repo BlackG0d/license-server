@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>License Server Admin</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --panel-border: #e5e7eb;
+      --shadow: 0 18px 45px rgba(0,0,0,0.06);
+      --accent1: #171717;
+      --accent2: #3f3f46;
+      --text: #111827;
+      --muted: #6b7280;
+      --soft: #f1f5f9;
+      --pill: #0ea5e9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    h1 { margin: 0; letter-spacing: 0.01em; }
+    h2 { margin: 0 0 12px; }
+    h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .layout { display: grid; grid-template-columns: 72px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: #1f2937;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 12px;
+      gap: 14px;
+    }
+    .nav-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      display: grid;
+      place-items: center;
+      color: #e5e7eb;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+      outline: none;
+      padding: 0;
+    }
+    .nav-icon:hover { background: rgba(255,255,255,0.14); }
+    .nav-icon:focus-visible { outline: 2px solid #bae6fd; outline-offset: 2px; }
+    .nav-icon.active { background: #f97316; color: #111827; font-weight: 800; box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
+    .main {
+      padding: 28px 30px 42px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+      margin-bottom: 18px;
+    }
+    .status { color: var(--muted); font-weight: 600; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 6px;
+    }
+    .stat-label { color: var(--muted); font-size: 13px; letter-spacing: 0.03em; }
+    .stat-value { font-size: 28px; font-weight: 800; }
+    .pill {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--soft);
+      border-radius: 999px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--muted); letter-spacing: 0.01em; }
+    input, select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: var(--text);
+      margin-bottom: 12px;
+      font-size: 14px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    }
+    input:focus, select:focus { outline: 2px solid rgba(14,165,233,0.15); border-color: #bae6fd; }
+    button {
+      padding: 11px 16px;
+      background: linear-gradient(120deg, var(--accent1), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 25px rgba(0,0,0,0.12);
+      letter-spacing: 0.01em;
+    }
+    button:hover { filter: brightness(1.05); }
+    button.secondary { background: linear-gradient(120deg, #0ea5e9, #38bdf8); }
+    button.danger { background: linear-gradient(120deg, #f97316, #ef4444); }
+    .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 8px; text-align: left; }
+    th { color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--panel-border); letter-spacing: 0.01em; }
+    tr + tr td { border-top: 1px solid var(--panel-border); }
+    .badge { padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; display: inline-block; }
+    .badge.ok { background: #ecfeff; color: #0ea5e9; }
+    .badge.warn { background: #fff7ed; color: #ea580c; }
+    .badge.danger { background: #fef2f2; color: #b91c1c; }
+    .json-card { margin-top: 12px; }
+    pre {
+      background: var(--soft);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      overflow-x: auto;
+      color: #111827;
+      font-size: 13px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .hidden { display: none !important; }
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 0 0, #ffffff 0, #f2f3f7 40%, #e6e9f0 100%);
+      padding: 24px;
+    }
+    .login-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.08);
+      padding: 24px 24px 18px;
+      width: min(440px, 100%);
+    }
+    .login-card h1 { margin: 0 0 6px; }
+    .login-card p { margin: 0 0 14px; color: var(--muted); }
+    .login-status { margin-top: 8px; color: var(--muted); font-weight: 600; }
+    .autocomplete { position: relative; }
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 10;
+      margin-top: 4px;
+      padding: 6px 0;
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .autocomplete-item:hover { background: #f8fafc; }
+    .key-list { display: grid; gap: 8px; margin-top: 10px; }
+    .key-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: #0f172a;
+      gap: 8px;
+    }
+    .copy-btn {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .copy-btn:hover { background: #e0f2fe; border-color: #bae6fd; }
+    .content-section { display: none; }
+    .content-section.active { display: block; }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .sidebar { flex-direction: row; justify-content: center; } }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      padding: 20px;
+      width: min(420px, 92vw);
+      border: 1px solid #e5e7eb;
+    }
+    .modal-card h3 { margin: 0 0 8px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <h1>Admin Login</h1>
+      <p>Enter your ADMIN_TOKEN to access the dashboard.</p>
+      <input id="loginToken" type="password" placeholder="ADMIN_TOKEN" />
+      <button style="width:100%; margin-top:6px;" onclick="startAdmin()">Continue</button>
+      <div id="loginStatus" class="login-status">Waiting for token…</div>
+    </div>
+  </div>
+
+  <div id="appContainer" class="layout hidden">
+    <aside class="sidebar">
+      <button class="nav-icon active" data-section="overview" title="Overview" aria-label="Overview" type="button">🏠</button>
+      <button class="nav-icon" data-section="licenses" title="Licenses" aria-label="Licenses" type="button">🔑</button>
+      <button class="nav-icon" data-section="users" title="Users" aria-label="Users" type="button">👥</button>
+      <button class="nav-icon" data-section="settings" title="Settings" aria-label="Settings" type="button">⚙️</button>
+    </aside>
+    <main class="main">
+      <div class="panel header">
+        <div>
+          <h1>License Admin</h1>
+          <div class="status" id="status">Paste ADMIN_TOKEN to start</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input id="adminToken" type="password" placeholder="ADMIN_TOKEN" style="width:220px; margin:0;">
+          <button class="secondary" onclick="loadSummary()">Load</button>
+        </div>
+      </div>
+
+      <section class="content-section active" data-section="overview">
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-label">Total Licenses</div>
+            <div class="stat-value" id="stat-total-licenses">—</div>
+            <span class="pill">All keys</span>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Licenses</div>
+            <div class="stat-value" id="stat-active-licenses">—</div>
+            <span class="pill">status=active</span>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Unused Licenses</div>
+            <div class="stat-value" id="stat-unused-licenses">—</div>
+            <span class="pill">status=unused</span>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Users</div>
+            <div class="stat-value" id="stat-total-users">—</div>
+            <span class="pill">accounts</span>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Disabled Users</div>
+            <div class="stat-value" id="stat-disabled-users">—</div>
+            <span class="pill">blocked</span>
+          </div>
+        </div>
+
+        <div class="tables">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h2>Licenses</h2>
+              <span class="pill" id="badge-licenses">0</span>
+            </div>
+            <table>
+              <thead>
+                <tr><th>Key</th><th>Status</th><th>Email</th><th>Device</th></tr>
+              </thead>
+              <tbody id="licenseTableBody"><tr><td colspan="4">No data</td></tr></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h2>Users</h2>
+              <span class="pill" id="badge-users">0</span>
+            </div>
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Email</th><th>License</th><th>Device</th><th>Status</th></tr>
+              </thead>
+              <tbody id="userTableBody"><tr><td colspan="5">No data</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="content-section" data-section="licenses">
+        <div class="grid-2">
+          <div class="card">
+            <h2>Create License</h2>
+            <label for="newLicenseKey">License key (leave blank to auto-generate)</label>
+            <input id="newLicenseKey" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" />
+            <label for="newLicenseStatus">Status</label>
+            <select id="newLicenseStatus">
+              <option value="unused">unused</option>
+              <option value="pro">pro</option>
+            </select>
+            <button onclick="createLicense()">Create license</button>
+            <div class="row" style="margin-top:10px; align-items:flex-end;">
+              <div>
+                <label for="bulkCount">Bulk generate (1-200)</label>
+                <input id="bulkCount" type="number" min="1" max="200" value="10" />
+              </div>
+              <div>
+                <label>&nbsp;</label>
+                <button class="secondary" style="width:100%;" onclick="createBulkLicenses()">Generate bulk</button>
+              </div>
+            </div>
+            <div style="margin-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <h3>Last generated</h3>
+                <button id="copyAllKeysBtn" class="copy-btn" onclick="copyAllKeys()" style="display:none;">Copy all</button>
+              </div>
+              <div id="createdKeysList" class="key-list">
+                <div class="key-item" style="justify-content:center;">No keys yet</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Update License Status</h2>
+            <label for="updateLicenseKey">License key</label>
+            <input id="updateLicenseKey" placeholder="Existing license key" />
+            <label for="updateLicenseStatus">New status</label>
+            <select id="updateLicenseStatus">
+              <option value="pro">pro</option>
+              <option value="unused">unused</option>
+              <option value="active">active</option>
+              <option value="revoked">revoked</option>
+              <option value="expired">expired</option>
+            </select>
+            <button onclick="updateLicense()">Update status</button>
+          </div>
+          <div class="card">
+            <h2>Get Licenses by Status</h2>
+            <label for="filterLicenseStatus">Status</label>
+            <select id="filterLicenseStatus">
+              <option value="unused">unused</option>
+              <option value="pro">pro</option>
+              <option value="active">active</option>
+              <option value="revoked">revoked</option>
+              <option value="expired">expired</option>
+            </select>
+            <button onclick="fetchLicensesByStatus()">Load licenses</button>
+            <div style="margin-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <h3 style="margin:0;">Results</h3>
+                  <span class="pill" id="filteredKeysCount">0</span>
+                </div>
+                <button id="copyFilteredKeysBtn" class="copy-btn" onclick="copyFilteredKeys()" style="display:none;">Copy all</button>
+              </div>
+              <div id="filteredKeysList" class="key-list">
+                <div class="key-item" style="justify-content:center;">No data</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-section" data-section="users">
+        <div class="grid-2">
+          <div class="card">
+            <h2>Disable / Enable User</h2>
+            <label for="disableUserEmail">User Email</label>
+            <div class="autocomplete">
+              <input id="disableUserEmail" type="email" placeholder="user@example.com" />
+              <div id="disableSuggest" class="autocomplete-list"></div>
+            </div>
+            <label for="disableToggle">Action</label>
+            <select id="disableToggle">
+              <option value="true">Disable</option>
+              <option value="false">Enable</option>
+            </select>
+            <button onclick="toggleUser()">Apply</button>
+          </div>
+          <div class="card">
+            <h2>Delete User</h2>
+            <label for="deleteUserEmail">User Email</label>
+            <div class="autocomplete">
+              <input id="deleteUserEmail" type="email" placeholder="user@example.com" />
+              <div id="deleteSuggest" class="autocomplete-list"></div>
+            </div>
+            <button class="danger" onclick="deleteUser()">Delete user</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-section" data-section="settings">
+        <div class="card">
+          <h2>Session</h2>
+          <p class="status">Token is stored locally for this browser after login. Click reload to refresh data.</p>
+          <button class="secondary" onclick="loadSummary()">Reload data</button>
+          <button class="danger" style="margin-left:8px;" onclick="clearSession()">Clear token</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="confirmOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>Delete this user?</h3>
+      <p class="status" id="confirmDeleteLabel">Are you sure you want to delete this user?</p>
+      <div class="modal-actions">
+        <button class="danger" onclick="confirmDeleteUser()">Yes, Delete</button>
+        <button class="secondary" onclick="cancelDeleteUser()">FUCK, NO, GO BACK!!</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let cachedLicenses = [];
+    let cachedUsers = [];
+    let recentKeys = [];
+    let filteredKeys = [];
+    let pendingDeleteUser = null;
+
+    function adminHeaders() {
+      const token = document.getElementById("adminToken").value;
+      return { "Content-Type": "application/json", "x-admin-token": token };
+    }
+
+    function renderCreatedKeys() {
+      const container = document.getElementById("createdKeysList");
+      const copyAllBtn = document.getElementById("copyAllKeysBtn");
+      if (!container) return;
+      if (!recentKeys.length) {
+        container.innerHTML = '<div class="key-item" style="justify-content:center;">No keys yet</div>';
+        if (copyAllBtn) copyAllBtn.style.display = "none";
+        return;
+      }
+      if (copyAllBtn) copyAllBtn.style.display = "inline-flex";
+      container.innerHTML = recentKeys
+        .slice(0, 10)
+        .map(
+          (k) => `
+          <div class="key-item">
+            <span>${k}</span>
+            <button class="copy-btn" data-key="${k}" onclick="copyKey('${k}')">Copy</button>
+          </div>`
+        )
+        .join("");
+    }
+
+    function renderFilteredKeys() {
+      const container = document.getElementById("filteredKeysList");
+      const copyBtn = document.getElementById("copyFilteredKeysBtn");
+      const countBadge = document.getElementById("filteredKeysCount");
+      if (!container) return;
+      if (countBadge) countBadge.textContent = filteredKeys.length;
+      if (!filteredKeys.length) {
+        container.innerHTML = '<div class="key-item" style="justify-content:center;">No data</div>';
+        if (copyBtn) copyBtn.style.display = "none";
+        return;
+      }
+      if (copyBtn) copyBtn.style.display = "inline-flex";
+      container.innerHTML = filteredKeys
+        .slice(0, 20)
+        .map(
+          (k) => `
+          <div class="key-item">
+            <span>${k}</span>
+            <button class="copy-btn" data-key="${k}" onclick="copyKey('${k}')">Copy</button>
+          </div>`
+        )
+        .join("");
+    }
+
+    async function copyKey(key) {
+      try {
+        await navigator.clipboard.writeText(key);
+        setStatus("Copied " + key);
+      } catch (e) {
+        setStatus("Copy failed");
+      }
+    }
+
+    async function copyFilteredKeys() {
+      if (!filteredKeys.length) {
+        setStatus("No keys to copy");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(filteredKeys.join("\n"));
+        setStatus("Copied " + filteredKeys.length + " keys");
+      } catch (e) {
+        setStatus("Copy failed");
+      }
+    }
+
+    async function copyAllKeys() {
+      if (!recentKeys.length) {
+        setStatus("No keys to copy");
+        return;
+      }
+      try {
+        const payload = recentKeys.join("\n");
+        await navigator.clipboard.writeText(payload);
+        setStatus("Copied " + recentKeys.length + " keys");
+      } catch (e) {
+        setStatus("Copy failed");
+      }
+    }
+
+    function setStatus(msg) { document.getElementById("status").textContent = msg; }
+
+    function switchSection(section) {
+      document.querySelectorAll(".nav-icon").forEach((el) => {
+        if (el.dataset.section === section) el.classList.add("active");
+        else el.classList.remove("active");
+      });
+      document.querySelectorAll(".content-section").forEach((el) => {
+        if (el.dataset.section === section) el.classList.add("active");
+        else el.classList.remove("active");
+      });
+    }
+
+    function renderStats(licenses, users) {
+      const totalLicenses = licenses.length;
+      const activeLicenses = licenses.filter(l => l.status === "active").length;
+      const unusedLicenses = licenses.filter(l => l.status === "unused").length;
+      const totalUsers = users.length;
+      const disabledUsers = users.filter(u => u.disabled).length;
+      document.getElementById("stat-total-licenses").textContent = totalLicenses;
+      document.getElementById("stat-active-licenses").textContent = activeLicenses;
+      document.getElementById("stat-unused-licenses").textContent = unusedLicenses;
+      document.getElementById("stat-total-users").textContent = totalUsers;
+      document.getElementById("stat-disabled-users").textContent = disabledUsers;
+      document.getElementById("badge-licenses").textContent = totalLicenses + " rows";
+      document.getElementById("badge-users").textContent = totalUsers + " rows";
+    }
+
+    function badgeClass(status) {
+      if (status === "active") return "badge ok";
+      if (status === "pro") return "badge ok";
+      if (status === "unused") return "badge";
+      if (status === "revoked" || status === "expired") return "badge warn";
+      return "badge";
+    }
+
+    function renderTables(licenses, users) {
+      const lBody = document.getElementById("licenseTableBody");
+      const uBody = document.getElementById("userTableBody");
+      lBody.innerHTML = licenses.length === 0 ? '<tr><td colspan="4">No data</td></tr>' : "";
+      uBody.innerHTML = users.length === 0 ? '<tr><td colspan="5">No data</td></tr>' : "";
+
+      licenses.slice(0, 50).forEach(l => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td style="font-weight:700;">${l.license_key}</td>
+          <td><span class="${badgeClass(l.status)}">${l.status}</span></td>
+          <td>${l.used_by_email || "—"}</td>
+          <td>${l.used_on_device_id || "—"}</td>
+        `;
+        lBody.appendChild(tr);
+      });
+
+      users.slice(0, 50).forEach(u => {
+        const tr = document.createElement("tr");
+        const badge = u.disabled ? '<span class="badge danger">disabled</span>' : '<span class="badge ok">active</span>';
+        tr.innerHTML = `
+          <td>${u.id}</td>
+          <td style="font-weight:700;">${u.email}</td>
+          <td>${u.license_id || "—"}</td>
+          <td>${u.device_id || "—"}</td>
+          <td>${badge}</td>
+        `;
+        uBody.appendChild(tr);
+      });
+
+    }
+
+    async function loadSummary(opts = {}) {
+      const set = opts.statusSetter || setStatus;
+      const silent = opts.silent;
+      try {
+        if (!silent) set("Loading...");
+        const res = await fetch("/admin/api/summary", { headers: adminHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        cachedLicenses = data.licenses || [];
+        cachedUsers = data.users || [];
+        renderStats(cachedLicenses, cachedUsers);
+        renderTables(cachedLicenses, cachedUsers);
+        refreshAutocomplete();
+        if (!silent) set("Loaded at " + new Date().toLocaleTimeString());
+        return true;
+      } catch (e) {
+        set("Error: " + e.message);
+        return false;
+      }
+    }
+
+    async function createLicense() {
+      try {
+        setStatus("Creating license...");
+        const manualKey = document.getElementById("newLicenseKey").value.trim();
+        const payload = {
+          licenseKey: manualKey || undefined,
+          status: document.getElementById("newLicenseStatus").value
+        };
+        const res = await fetch("/admin/api/licenses", {
+          method: "POST",
+          headers: adminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        const key = data.license?.license_key || manualKey || "";
+        if (key) {
+          recentKeys = [key, ...recentKeys].slice(0, 20);
+          renderCreatedKeys();
+        }
+        setStatus("Created license " + key);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function createBulkLicenses() {
+      try {
+        setStatus("Generating bulk licenses...");
+        const count = Number(document.getElementById("bulkCount").value) || 1;
+        const payload = {
+          status: document.getElementById("newLicenseStatus").value,
+          count
+        };
+        const res = await fetch("/admin/api/licenses", {
+          method: "POST",
+          headers: adminHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        const created = data.count || (data.licenses ? data.licenses.length : data.license ? 1 : 0);
+        const keys = data.licenses
+          ? data.licenses.map(l => l.license_key)
+          : data.license && data.license.license_key
+            ? [data.license.license_key]
+            : [];
+        if (keys.length) {
+          recentKeys = [...keys, ...recentKeys].slice(0, 20);
+          renderCreatedKeys();
+        }
+        setStatus(`Created ${created} licenses`);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function fetchLicensesByStatus() {
+      try {
+        setStatus("Loading licenses...");
+        const status = document.getElementById("filterLicenseStatus").value;
+        const res = await fetch("/admin/api/licenses?status=" + encodeURIComponent(status), {
+          headers: adminHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        filteredKeys = (data.licenses || []).map(l => l.license_key);
+        renderFilteredKeys();
+        setStatus(`Loaded ${filteredKeys.length} ${status} licenses`);
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function updateLicense() {
+      try {
+        setStatus("Updating license...");
+        const licenseKey = document.getElementById("updateLicenseKey").value.trim();
+        const status = document.getElementById("updateLicenseStatus").value;
+        const res = await fetch("/admin/api/licenses/" + encodeURIComponent(licenseKey) + "/status", {
+          method: "PATCH",
+          headers: adminHeaders(),
+          body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus("Updated license " + data.license.license_key + " to " + data.license.status);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function toggleUser() {
+      try {
+        setStatus("Updating user...");
+        const email = document.getElementById("disableUserEmail").value.trim().toLowerCase();
+        const disabled = document.getElementById("disableToggle").value === "true";
+        if (!email) {
+            setStatus("Error: email required");
+            return;
+        }
+        const user = cachedUsers.find(u => (u.email || "").toLowerCase() === email);
+        if (!user) {
+            setStatus("Error: user not found in summary (reload?)");
+            return;
+        }
+        const res = await fetch("/admin/api/users/" + encodeURIComponent(user.id) + "/disable", {
+          method: "PATCH",
+          headers: adminHeaders(),
+          body: JSON.stringify({ disabled })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus(data.message);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    async function deleteUser() {
+      try {
+        const email = document.getElementById("deleteUserEmail").value.trim().toLowerCase();
+        if (!email) {
+            setStatus("Error: email required");
+            return;
+        }
+        const user = cachedUsers.find(u => (u.email || "").toLowerCase() === email);
+        if (!user) {
+            setStatus("Error: user not found in summary (reload?)");
+            return;
+        }
+        pendingDeleteUser = user;
+        const label = document.getElementById("confirmDeleteLabel");
+        if (label) label.textContent = `Delete user ${user.email}? This cannot be undone.`;
+        document.getElementById("confirmOverlay").classList.remove("hidden");
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    function cancelDeleteUser() {
+      pendingDeleteUser = null;
+      document.getElementById("confirmOverlay").classList.add("hidden");
+    }
+
+    async function confirmDeleteUser() {
+      if (!pendingDeleteUser) {
+        setStatus("Error: no user selected");
+        document.getElementById("confirmOverlay").classList.add("hidden");
+        return;
+      }
+      const user = pendingDeleteUser;
+      pendingDeleteUser = null;
+      document.getElementById("confirmOverlay").classList.add("hidden");
+      try {
+        setStatus("Deleting user...");
+        const res = await fetch("/admin/api/users/" + encodeURIComponent(user.id), {
+          method: "DELETE",
+          headers: adminHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
+        setStatus(data.message);
+        loadSummary();
+      } catch (e) {
+        setStatus("Error: " + e.message);
+      }
+    }
+
+    function setLoginStatus(msg) {
+      const el = document.getElementById("loginStatus");
+      if (el) el.textContent = msg;
+    }
+
+    async function startAdmin() {
+      const token = (document.getElementById("loginToken").value || "").trim();
+      if (!token) {
+        setLoginStatus("Token required");
+        return;
+      }
+      document.getElementById("adminToken").value = token;
+      setLoginStatus("Authenticating…");
+      const ok = await loadSummary({ silent: true, statusSetter: setLoginStatus });
+      if (ok) {
+        localStorage.setItem("ADMIN_TOKEN", token);
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("appContainer").classList.remove("hidden");
+        setStatus("Loaded at " + new Date().toLocaleTimeString());
+        switchSection("overview");
+      } else {
+        setLoginStatus("Invalid token or network error");
+      }
+    }
+
+    function setupAutocomplete(inputId, listId) {
+      const input = document.getElementById(inputId);
+      const list = document.getElementById(listId);
+      let hideTimer = null;
+
+      const hide = () => { list.style.display = "none"; };
+
+      const showMatches = () => {
+        const query = (input.value || "").toLowerCase();
+        const matches = query.length === 0
+          ? cachedUsers.slice(0, 10)
+          : cachedUsers.filter(u => (u.email || "").toLowerCase().startsWith(query)).slice(0, 10);
+
+        if (matches.length === 0) {
+          list.style.display = "none";
+          return;
+        }
+        list.innerHTML = matches.map(u => `<div class="autocomplete-item" data-email="${u.email}">${u.email}</div>`).join("");
+        list.style.display = "block";
+      };
+
+      input.addEventListener("input", showMatches);
+      input.addEventListener("focus", showMatches);
+      input.addEventListener("blur", () => { hideTimer = setTimeout(hide, 120); });
+
+      list.addEventListener("mousedown", (e) => {
+        const target = e.target.closest(".autocomplete-item");
+        if (!target) return;
+        e.preventDefault();
+        input.value = target.dataset.email;
+        hide();
+      });
+    }
+
+    function refreshAutocomplete() {
+      // Re-render suggestions if a list is open
+      const lists = [
+        { input: "disableUserEmail", list: "disableSuggest" },
+        { input: "deleteUserEmail", list: "deleteSuggest" }
+      ];
+      lists.forEach(({ input, list }) => {
+        const el = document.getElementById(list);
+        if (el && el.style.display === "block") {
+          const inputEl = document.getElementById(input);
+          inputEl && inputEl.dispatchEvent(new Event("input"));
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      setupAutocomplete("disableUserEmail", "disableSuggest");
+      setupAutocomplete("deleteUserEmail", "deleteSuggest");
+      const saved = localStorage.getItem("ADMIN_TOKEN");
+      if (saved) {
+        document.getElementById("loginToken").value = saved;
+        document.getElementById("adminToken").value = saved;
+        // Keep login screen until user explicitly continues.
+      }
+      document.querySelectorAll(".nav-icon").forEach((el) => {
+        el.addEventListener("click", () => switchSection(el.dataset.section));
+      });
+      renderCreatedKeys();
+      renderFilteredKeys();
+    });
+  </script>
+</body>
+</html>
